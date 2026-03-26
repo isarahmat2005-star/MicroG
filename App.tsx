@@ -12,10 +12,12 @@ import PromptListComponent from './components/PromptListComponent';
 import PreviewModal from './components/PreviewModal';
 import QuranPanel from './components/QuranPanel'; 
 import QcSettings from './components/QcSettings'; 
-import QcCard from './components/QcCard';         
+import QcCard from './components/QcCard';
+import LogPanel from './components/LogPanel'; // <--- IMPORT KOMPONEN LOG BARU
 import { generateMetadataForFile, translateMetadataContent } from './services/geminiService';
 import { downloadCSV, downloadTXT, extractSlugFromUrl } from './utils/helpers';
-import { AppSettings, FileItem, FileType, ProcessingStatus, Language, AppMode, ApiProvider } from './types';
+// TAMBAH LogEntry DI IMPORT BAWAH INI
+import { AppSettings, FileItem, FileType, ProcessingStatus, Language, AppMode, ApiProvider, LogEntry } from './types'; 
 import { INITIAL_METADATA } from './constants';
 
 // === KOMPONEN WIDGET MELAYANG (DRAGGABLE) ===
@@ -82,14 +84,6 @@ const DraggablePlayer: React.FC<{ children: React.ReactNode }> = ({ children }) 
 };
 // ============================================
 
-interface LogEntry {
-  id: string;
-  time: string;
-  message: string;
-  type: 'info' | 'success' | 'error' | 'warning';
-  mode?: AppMode | 'system'; 
-}
-
 const DEFAULT_FORBIDDEN_WORDS = "vector, illustration, clipart, drawing, digital art, 3d render, template, layout, drone, gopro, 8K, 60fps, Apple, Samsung, Nike, Adidas, Gucci, Rolex, Coca-Cola, Pepsi, Disney, Lego, Microsoft, Google, Sony, Nikon, Canon, Facebook, Instagram, Twitter, TikTok, iPhone, iPad, Galaxy, Eiffel Tower Night, Hollywood Sign, Red Cross, Olympic Rings, United Nations, Vatican City, 4K, HD, High Quality, Award Winning, Best, Professional, Photo, Image, Shot on, Shot with, Watermark, Logo, Signature, Copyright, Trademark, Brand, Patent, Patent Pending, All Rights Reserved, Blurred, Out of focus, Grainy, Noisy, Low resolution, Porn, Sex, Nude, Violence, Bloody, Israel, North Korea, Crimea, Restricted Area, Top Secret";
 
 const IDEA_FORBIDDEN_WORDS = "porn, sex, nude, naked, xxx, erotic, boobs, tits, pussy, fuck, dick, cock, penis, vagina, ass, orgasm, masturbate, bitch, whore, slut, milf, fetish, bdsm, rape, incest, anal, blowjob, cum, ejaculate, hentai, stripper, escort, hot girl, 18+, adult, bathroom, toilet, change clothes, undress, bhabhi, auntie, desi, upskirt, birth, pregnant, bloody, injury, gore";
@@ -110,8 +104,6 @@ const rawStringify = (val: any): string => {
 const App: React.FC = () => {
   const [activeTab, setActiveTab] = useState<AppMode | 'logs' | 'apikeys' | 'quran'>('apikeys');
   const [logs, setLogs] = useState<LogEntry[]>([]);
-  const [logViewMode, setLogViewMode] = useState<'transparent' | 'clipped'>('clipped');   
-  const [showErrorDict, setShowErrorDict] = useState(false);
   const [currentTime, setCurrentTime] = useState(new Date());
   
   const [isMounted, setIsMounted] = useState(false);
@@ -250,6 +242,7 @@ const App: React.FC = () => {
       promptSourceFiles: [],
       csvFilename: '',
       outputFormat: 'csv',
+      epsMode: false,
     };
 
     try {
@@ -298,7 +291,6 @@ const App: React.FC = () => {
 
   const sidebarContentRef = useRef<HTMLDivElement>(null);
   const mainContentRef = useRef<HTMLDivElement>(null);
-  const logsContainerRef = useRef<HTMLDivElement>(null);
 
   const getActiveDataKey = () => {
     if (activeTab === 'idea') return settings.ideaMode === 'free' ? 'idea_free' : 'idea_paid';
@@ -333,12 +325,6 @@ const App: React.FC = () => {
     const settingsToSave = { ...settings, ideaSourceFiles: [], promptSourceFiles: [] };
     localStorage.setItem('ISA_APP_SETTINGS', JSON.stringify(settingsToSave));
   }, [settings]);
-
-  useEffect(() => {
-    if (logsContainerRef.current && !showErrorDict) {
-        logsContainerRef.current.scrollTop = logsContainerRef.current.scrollHeight;
-    }
-  }, [logs, activeTab, logViewMode, showErrorDict]);
 
   useEffect(() => {
     if (!isProcessing || !processingMode) return;
@@ -387,9 +373,10 @@ const App: React.FC = () => {
     return `${day}/${month}/${year}`;
   };
 
+  // === FUNGSI ADD LOG DENGAN TAMBAHAN MILIDETIK BIAR REALTIME BGT ===
   const addLog = (message: string, type: 'info' | 'success' | 'error' | 'warning' = 'info', mode: AppMode | 'system' = 'system') => {
     const now = new Date();
-    const timeString = now.toLocaleTimeString([], { hour12: false, hour: '2-digit', minute: '2-digit', second: '2-digit' });
+    const timeString = now.toLocaleTimeString([], { hour12: false, hour: '2-digit', minute: '2-digit', second: '2-digit', fractionalSecondDigits: 3 });
     setLogs(prev => [...prev, {
       id: uuidv4(),
       time: timeString,
@@ -1043,8 +1030,6 @@ const App: React.FC = () => {
   const completedCount = currentFiles.filter(f => f.status === ProcessingStatus.Completed).length;
   const failedCount = currentFiles.filter(f => f.status === ProcessingStatus.Failed).length;
   
-  const filteredLogs = logs;
-  
   const activeModeLabel = 
         activeTab === 'apikeys' ? 'API Configuration'
         : activeTab === 'logs' ? 'System Logs'
@@ -1196,7 +1181,7 @@ const App: React.FC = () => {
 
       <main className="flex-1 flex flex-col md:flex-row overflow-y-auto md:overflow-hidden relative">
         <aside className={`w-full md:w-[380px] md:ml-2 bg-gray-50 md:border-r border-gray-200 flex flex-col z-20 order-1 md:h-full md:overflow-hidden ${isSidebarOnlyMode ? 'flex-1 md:flex-none' : 'shrink-0'}`}>
-  
+ 
           <div className="flex flex-col bg-white border-b border-gray-200 shrink-0 overflow-hidden">
               <div ref={menuScrollRef} className="flex items-center gap-1.5 p-1.5 overflow-x-auto whitespace-nowrap scrollbar-none scroll-smooth">
                   
@@ -1297,7 +1282,7 @@ const App: React.FC = () => {
 
               </div>
           </div>
-  
+ 
           <div ref={sidebarContentRef} className="flex-1 bg-gray-50 flex flex-col overflow-y-visible md:overflow-y-auto overflow-x-hidden scrollbar-thin scrollbar-thumb-gray-200">
               <div className="p-4 flex flex-col gap-4">
                   {activeTab === 'quran' && (
@@ -1349,7 +1334,6 @@ const App: React.FC = () => {
                   )}
                   {activeTab === 'apikeys' && (
                       <ApiKeyPanel 
-                          // MENGIRIM KUNCI YANG SESUAI DENGAN PROVIDER YANG DIPILIH
                           apiKeys={settings.apiProvider === 'GROQ API' ? groqKeys : apiKeys}
                           setApiKeys={settings.apiProvider === 'GROQ API' ? setGroqKeys : setApiKeys}
                           isProcessing={isProcessing} 
@@ -1365,115 +1349,15 @@ const App: React.FC = () => {
                       />
                   )}
 
+                  {/* === PANGGILAN KE KOMPONEN LOG BARU KITA === */}
                   {activeTab === 'logs' && (
-                      <div className="bg-white p-4 rounded-lg shadow-sm border border-blue-200 flex flex-col gap-2">
-                          <div className="flex items-center gap-2 mb-2">
-                              <Activity className="w-4 h-4 text-blue-500" />
-                              <h2 className="text-base font-semibold text-gray-700 uppercase tracking-wide leading-none">System Logs</h2>
-                          </div>
-                          <div className="flex gap-2 p-1 bg-gray-100 rounded-lg w-full h-[46px]">
-                              <button
-                                  onClick={() => setShowErrorDict(!showErrorDict)}
-                                  title="Info Makna Kode Error"
-                                  className={`w-10 flex items-center justify-center shrink-0 rounded-md transition-none ${
-                                      showErrorDict ? 'bg-amber-100 text-amber-700 shadow-sm border border-amber-200' : 'bg-white text-gray-500 border border-gray-200 hover:bg-gray-200'
-                                  }`}
-                              >
-                                  <Menu size={18} />
-                              </button>
-                              <button
-                                  onClick={() => { setLogViewMode('clipped'); setShowErrorDict(false); }}
-                                  className={`flex-1 flex items-center justify-center gap-2 py-2 text-base font-medium rounded-md transition-none ${
-                                      logViewMode === 'clipped' && !showErrorDict ? 'bg-white text-blue-600 shadow-sm border border-blue-100' : 'text-gray-500 hover:bg-gray-200'
-                                  }`}
-                              >
-                                  Clipped
-                              </button>
-                              <button
-                                  onClick={() => { setLogViewMode('transparent'); setShowErrorDict(false); }}
-                                  className={`flex-1 flex items-center justify-center gap-2 py-2 text-base font-medium rounded-md transition-none ${
-                                      logViewMode === 'transparent' && !showErrorDict ? 'bg-white text-blue-600 shadow-sm border border-blue-100' : 'text-gray-500 hover:bg-gray-200'
-                                  }`}
-                              >
-                                  Transparent
-                              </button>
-                          </div>
-
-                          <div className={`relative flex h-[500px] shrink-0 flex-col overflow-hidden rounded-lg border mt-2 ${
-                              showErrorDict 
-                                  ? 'bg-amber-50 border-amber-200 shadow-sm'
-                                  : logViewMode === 'transparent' 
-                                      ? 'bg-white/40 backdrop-blur-md border-blue-200/60 shadow-none' 
-                                      : 'bg-white border-blue-200 shadow-sm'
-                          }`}>
-                              {showErrorDict ? (
-                                  <div className="flex-1 overflow-y-auto p-4 scrollbar-thin scrollbar-thumb-amber-200/50">
-                                      <h3 className="text-sm font-bold text-amber-800 uppercase tracking-widest mb-4 border-b border-amber-200 pb-2">Kamus Kode Error API</h3>
-                                      <div className="flex flex-col gap-3 text-xs text-gray-700">
-                                          <div className="bg-white p-3 rounded border border-amber-100 shadow-sm">
-                                              <span className="font-black text-red-600 text-sm">Error 400 (Bad Request)</span>
-                                              <p className="mt-1"><b>Penyebab:</b> File tidak didukung, resolusi gambar/video kebesaran, atau teks terlalu panjang/melanggar format sistem.</p>
-                                          </div>
-                                          <div className="bg-white p-3 rounded border border-amber-100 shadow-sm">
-                                              <span className="font-black text-red-600 text-sm">Error 401 (Unauthorized)</span>
-                                              <p className="mt-1"><b>Penyebab:</b> API Key salah ketik, kedaluwarsa, ditarik dari Google AI Studio, atau belum diisi.</p>
-                                          </div>
-                                          <div className="bg-white p-3 rounded border border-amber-100 shadow-sm">
-                                              <span className="font-black text-red-600 text-sm">Error 403 (Forbidden)</span>
-                                              <p className="mt-1"><b>Penyebab:</b> Kunci valid tapi tidak punya izin akses ke model tersebut, atau IP wilayah terblokir.</p>
-                                          </div>
-                                          <div className="bg-white p-3 rounded border border-amber-100 shadow-sm">
-                                              <span className="font-black text-red-600 text-sm">Error 404 (Not Found)</span>
-                                              <p className="mt-1"><b>Penyebab:</b> Nama model salah ketik (typo) atau model sudah dihapus/dinonaktifkan oleh Google.</p>
-                                          </div>
-                                          <div className="bg-white p-3 rounded border border-amber-100 shadow-sm">
-                                              <span className="font-black text-orange-600 text-sm">Error 429 (Quota Exceeded / Limit)</span>
-                                              <p className="mt-1"><b>Penyebab:</b> Terlalu banyak request dalam 1 menit, atau jatah gratis harian habis. Sistem akan otomatis memindahkan kunci ke kotak istirahat selama 60 detik.</p>
-                                          </div>
-                                          <div className="bg-white p-3 rounded border border-amber-100 shadow-sm">
-                                              <span className="font-black text-red-600 text-sm">Error 500 (Internal Server Error)</span>
-                                              <p className="mt-1"><b>Penyebab:</b> Bukan salah aplikasi kita. Server pusat Google sedang <i>down</i> atau error memproses file. Tunggu dan coba lagi.</p>
-                                          </div>
-                                          <div className="bg-white p-3 rounded border border-amber-100 shadow-sm">
-                                              <span className="font-black text-red-600 text-sm">Error 503 / 504 (Timeout)</span>
-                                              <p className="mt-1"><b>Penyebab:</b> Server Google kepenuhan (jam sibuk) atau file video/gambar terlalu berat sehingga koneksi diputus otomatis.</p>
-                                          </div>
-                                          <div className="bg-white p-3 rounded border border-amber-100 shadow-sm">
-                                              <span className="font-black text-red-600 text-sm">Network Error / Fetch Failed</span>
-                                              <p className="mt-1"><b>Penyebab:</b> Koneksi internet putus, atau VPN/Proxy/DNS komputer memblokir jalur ke server.</p>
-                                          </div>
-                                      </div>
-                                  </div>
-                              ) : (
-                                  <>
-                                      <div className="flex shrink-0 border-b border-gray-100 divide-x divide-gray-100 bg-white/50 backdrop-blur-sm">
-                                          <button onClick={handleClearLogs} className="flex-1 flex items-center justify-center gap-2 bg-red-50/50 py-2.5 text-xs font-bold uppercase tracking-wider text-red-600 transition-colors hover:bg-red-100"><Eraser size={14} /> CLEAR LOGS</button>
-                                          <button onClick={handleCopyLogs} className="flex-1 flex items-center justify-center gap-2 bg-blue-50/50 py-2.5 text-xs font-bold uppercase tracking-wider text-blue-600 transition-colors hover:bg-red-100"><Copy size={14} /> COPY LOGS</button>
-                                      </div>
-                                      <div ref={logsContainerRef} className="flex-1 overflow-y-auto p-4 scrollbar-thin scrollbar-thumb-gray-200/50">
-                                          {filteredLogs.length === 0 ? (
-                                          <div className="flex h-full flex-col items-center justify-center gap-2 text-gray-400 opacity-40"><Activity size={32} /> <p>No logs found.</p></div>
-                                          ) : (
-                                          <div className="flex flex-col gap-2">
-                                              {filteredLogs.map(log => (
-                                              <div key={log.id} className="flex items-start gap-2 break-all border-b border-gray-50/50 pb-1 last:border-0">
-                                                  <span className={`mt-0.5 shrink-0 rounded px-1 text-[10px] font-medium ${log.mode === 'idea' ? 'bg-amber-100/80 text-amber-700' : log.mode === 'prompt' ? 'bg-fuchsia-100/80 text-fuchsia-700' : log.mode === 'metadata' ? 'bg-blue-100/80 text-blue-700' : 'bg-gray-100/80 text-gray-600'}`}>{log.mode?.substring(0,4).toUpperCase()}</span>
-                                                  <div className="flex min-w-0 flex-1 flex-col">
-                                                      <span className="font-mono text-[10px] text-gray-400/80">{log.time}</span>
-                                                      <span className={`text-xs ${log.type === 'error' ? 'text-red-600 font-bold' : log.type === 'success' ? 'text-green-600 font-semibold' : log.type === 'warning' ? 'text-orange-600 font-semibold' : 'text-gray-700'} ${logViewMode === 'clipped' ? 'line-clamp-2 overflow-hidden' : 'break-words whitespace-pre-wrap'}`}>
-                                                          {log.message}
-                                                      </span>
-                                                  </div>
-                                              </div>
-                                              ))}
-                                          </div>
-                                          )}
-                                      </div>
-                                  </>
-                              )}
-                          </div>
-                      </div>
+                      <LogPanel 
+                          logs={logs} 
+                          onClearLogs={handleClearLogs} 
+                          onCopyLogs={handleCopyLogs} 
+                      />
                   )}
+                  {/* =========================================== */}
               </div>
           </div>
 
