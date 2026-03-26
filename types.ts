@@ -62,6 +62,14 @@ export interface Category {
   id_lang: string; 
 }
 
+export interface LogEntry {
+  id: string;
+  time: string;
+  message: string;
+  type: 'info' | 'success' | 'error' | 'warning';
+  mode?: AppMode | 'system'; 
+}
+
 export type AppMode = 'idea' | 'idea_free' | 'idea_paid' | 'prompt' | 'metadata' | 'quran' | 'qc';
 
 export interface ScrapedDataRow {
