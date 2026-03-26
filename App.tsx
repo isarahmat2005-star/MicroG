@@ -384,7 +384,7 @@ const App: React.FC = () => {
         'logs': 'System Logs'
     };
     if (tab !== 'logs') { // Jangan log kalau cuma buka tab logs biar gak menuh-menuhin
-        addLog(`Opening workspace: ${tabNameMap[tab] || tab.toUpperCase()}`, 'info', 'system');
+        addLog(`Opening tab ${tab}`, 'info', 'system');
     }
   };
 
