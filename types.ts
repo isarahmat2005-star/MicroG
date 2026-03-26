@@ -114,6 +114,10 @@ export interface AppSettings {
   ideaWorkerCount: number;
   promptIdea: string;
   promptDescription: string;
+  
+  // === LACI BARU UNTUK NEGATIVE PROMPT ===
+  negativePrompt: string; 
+  
   promptQuantity: number;
   promptJsonOutput: boolean;
   promptPlatform: string; 
