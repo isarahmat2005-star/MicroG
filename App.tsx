@@ -13,10 +13,9 @@ import PreviewModal from './components/PreviewModal';
 import QuranPanel from './components/QuranPanel'; 
 import QcSettings from './components/QcSettings'; 
 import QcCard from './components/QcCard';
-import LogPanel from './components/LogPanel'; // <--- IMPORT KOMPONEN LOG BARU
+import LogPanel from './components/LogPanel'; 
 import { generateMetadataForFile, translateMetadataContent } from './services/geminiService';
 import { downloadCSV, downloadTXT, extractSlugFromUrl } from './utils/helpers';
-// TAMBAH LogEntry DI IMPORT BAWAH INI
 import { AppSettings, FileItem, FileType, ProcessingStatus, Language, AppMode, ApiProvider, LogEntry } from './types'; 
 import { INITIAL_METADATA } from './constants';
 
@@ -163,7 +162,7 @@ const App: React.FC = () => {
         if (surahsList) setQuranSurahs(surahsList);
         
         // === SENSOR AUDIO MUROTTAL ===
-        addLog(`Memutar Surah: ${surahName} - ${reciterName}`, 'info', 'quran');
+        addLog(`Playing Surah: ${surahName} - ${reciterName}`, 'info', 'quran');
       }
       audioRef.current.play();
       setIsAudioPlaying(true);
@@ -385,7 +384,7 @@ const App: React.FC = () => {
         'logs': 'System Logs'
     };
     if (tab !== 'logs') { // Jangan log kalau cuma buka tab logs biar gak menuh-menuhin
-        addLog(`Membuka ruang kerja: ${tabNameMap[tab] || tab.toUpperCase()}`, 'info', 'system');
+        addLog(`Opening workspace: ${tabNameMap[tab] || tab.toUpperCase()}`, 'info', 'system');
     }
   };
 
@@ -838,7 +837,7 @@ const App: React.FC = () => {
       
       maxConcurrency = Math.max(1, maxConcurrency);
         
-      addLog(`Menjalankan ${maxConcurrency} worker menggunakan ${settings.apiProvider}...`, 'info', mode);
+      addLog(`Running ${maxConcurrency} workers using ${settings.apiProvider}...`, 'info', mode);
   
       for (let i = 0; i < maxConcurrency; i++) {
         setTimeout(() => spawnWorker(i + 1, mode), i * 100);
@@ -850,7 +849,7 @@ const App: React.FC = () => {
       const nextPausedState = !isPaused;
       setIsPaused(nextPausedState);
       pausedRef.current = nextPausedState;
-      addLog(nextPausedState ? "Proses dihentikan sementara (Paused)." : "Proses dilanjutkan (Resumed).", nextPausedState ? 'warning' : 'info', processingMode || 'metadata');
+      addLog(nextPausedState ? "Processing paused." : "Processing resumed.", nextPausedState ? 'warning' : 'info', processingMode || 'metadata');
   };
   
   const spawnWorker = async (workerId: number, mode: AppMode) => {
@@ -936,7 +935,7 @@ const App: React.FC = () => {
              }
              
              const keyLabel = settings.apiProvider === 'GEMINI CANVAS' ? `Canvas Routing` : `Key ${currentKeyList.indexOf(selectedKey) + 1}`;
-             addLog(`Worker ${workerId} (${keyLabel}) [Sukses] ${currentFileItem.file.name}`, 'success', mode);
+             addLog(`Worker ${workerId} (${keyLabel}) [Success] ${currentFileItem.file.name}`, 'success', mode);
              if (selectedKey) activeKeysRef.current.delete(selectedKey);
         }
 
@@ -955,10 +954,10 @@ const App: React.FC = () => {
           
           if ((settings.apiProvider === 'GEMINI API' || settings.apiProvider === 'GROQ API') && selectedKey) {
              cooldownKeysRef.current.set(selectedKey, Date.now() + 60000); 
-             addLog(`Worker ${workerId} Terlimit (Ganti Kunci / Cooldown 60s). Detail: ${rawErrorMsg}`, 'warning', mode);
+             addLog(`Worker ${workerId} rate limited (Switching Key / Cooldown 60s). Details: ${rawErrorMsg}`, 'warning', mode);
           } else {
              globalCooldownRef.current = Date.now() + 60000; 
-             addLog(`LIMIT SERVER ${settings.apiProvider}! Semua worker istirahat 60 detik. Detail: ${rawErrorMsg}`, 'warning', mode);
+             addLog(`${settings.apiProvider} SERVER LIMIT! All workers resting for 60s. Details: ${rawErrorMsg}`, 'warning', mode);
           }
           
           if (fileIndex !== -1) {
@@ -973,7 +972,7 @@ const App: React.FC = () => {
                   error: rawErrorMsg
               };
           }
-          addLog(`Worker ${workerId} [Gagal] ${rawErrorMsg}`, 'error', mode);
+          addLog(`Worker ${workerId} [Failed] ${rawErrorMsg}`, 'error', mode);
         }
       }
       
@@ -1018,7 +1017,7 @@ const App: React.FC = () => {
                  return newState;
               });
   
-              addLog('Semua worker selesai.', 'success', mode);
+              addLog('All workers completed.', 'success', mode);
           }
         }, 1000);
       }
