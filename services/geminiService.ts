@@ -217,7 +217,7 @@ export const generateMetadataForFile = async (
         };
 
     } else if (mode === 'idea') {
-        temperature = 1.0; // Kita mentokkan suhunya biar AI makin liar dan kreatif
+        temperature = 1.0; 
         outputSchema = {
            type: Type.OBJECT,
            properties: {
@@ -227,20 +227,37 @@ export const generateMetadataForFile = async (
            required: ["en_idea", "ind_idea"]
         };
 
-        // Kalau "auto", paksa AI mikir lintas kategori
-        const kategoriDipilih = settings.ideaCategory === 'auto' ? 'SANGAT ACAK/RANDOM (Bebas pilih: Teknologi, Alam, Bisnis, Makanan, Medis, Lifestyle, dll)' : settings.ideaCategory;
+        // 1. PERBAIKAN BUG CUSTOM & FILE (Memanggil Input Asli Sampeyan)
+        let temaUtama = "";
+        if (settings.ideaCategory === 'auto') {
+            temaUtama = "SANGAT ACAK (Pilih bebas dari: Medis, Bisnis, Alam, Makanan, Gaya Hidup, Teknologi, Olahraga)";
+        } else if (settings.ideaCategory === 'custom') {
+            temaUtama = settings.ideaCustomInput || "Topik Bebas"; // <--- Mengambil teks ketikan sampeyan!
+        } else if (settings.ideaCategory === 'file') {
+            temaUtama = "ANALISA FILE VISUAL (Lihat gambar/video yang dilampirkan, lalu hasilkan ide pengembangan visual baru darinya)";
+        } else {
+            temaUtama = settings.ideaCategory;
+        }
+
         const instruksiPengguna = settings.ideaCustomInstruction;
 
+        // 2. LOGIKA LICIK ANTI-TEMPLAT (RANDOM SEMANTIC SEED)
+        const bumbuAcak = ["Cyberpunk", "Cinematic", "Minimalist", "Surreal", "Macro", "Neon", "Vintage", "Drone View", "Silhouette", "Isometric", "Pop Art", "Golden Hour", "High Contrast", "Candid", "Symmetrical", "Abstract", "Gothic", "Ethereal", "Futuristic", "Pastel", "Double Exposure", "Bokeh", "Steampunk", "Low-poly", "Vibrant", "Monochrome", "Hyper-realistic", "Fantasy", "Industrial", "Microscopic", "Overhead", "Motion Blur", "Flat Lay"];
+        
+        // Sistem ngundi 2 gaya visual secara rahasia untuk tiap-tiap worker!
+        const paksaanVisual1 = bumbuAcak[Math.floor(Math.random() * bumbuAcak.length)];
+        const paksaanVisual2 = bumbuAcak[Math.floor(Math.random() * bumbuAcak.length)];
+
         systemInstruction = `Bertindak sebagai Senior Microstock Analyst. Berikan 1 ide konsep visual bernilai komersial tinggi.
-        TEMA/KATEGORI: ${kategoriDipilih}
+        TEMA/OBJEK UTAMA: ${temaUtama}
         ATURAN MUTLAK:
-        1. Output HANYA berupa kalimat ide yang sangat singkat (1 baris, maksimal 5-10 kata).
+        1. Output HANYA berupa kalimat ide yang sangat singkat (1 baris, maksimal 5 kata).
         2. JANGAN sertakan judul, deskripsi panjang, atau keyword.
         3. Hasilkan dalam field JSON 'en_idea' dan 'ind_idea'.`;
 
-        // INJEKSI ID ACAK BIAR HASILNYA NGGAK KEMBAR!
         promptText = `TUGAS ID: ${fileItem.id}
-(CRITICAL RULE: Gunakan huruf/angka acak pada ID di atas sebagai inspirasi tak terlihat. Anda WAJIB memberikan subjek, lokasi, dan aktivitas yang 100% berbeda dari ide klise pada umumnya!).
+CRITICAL RULE (ANTI-KEMBAR): Untuk memastikan variasi, Anda WAJIB memadukan gaya visual ini ke dalam ide Anda: [${paksaanVisual1}] dan [${paksaanVisual2}]. 
+Jangan buat ide klise seperti 'server room' atau 'electric car'. Buat objek, lokasi, dan aktivitas yang 100% segar dan super liar!
 
 INSTRUKSI DARI PENGGUNA: 
 "${instruksiPengguna ? instruksiPengguna : "Buat konsep visual serealistis mungkin. Hindari ide pasaran."}"`;
