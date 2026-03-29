@@ -63,8 +63,9 @@ const compressImage = async (file: File): Promise<{ inlineData: { data: string; 
     reader.onload = (e) => {
       const img = new Image();
       img.onload = () => {
-        const MAX_WIDTH = 3000; 
-        const MAX_HEIGHT = 3000;
+        const MAX_WIDTH = 800;  
+        const MAX_HEIGHT = 800;
+        
         let width = img.width;
         let height = img.height;
         if (width > height) {
@@ -87,7 +88,8 @@ const compressImage = async (file: File): Promise<{ inlineData: { data: string; 
           return;
         }
         ctx.drawImage(img, 0, 0, width, height);
-        const dataUrl = canvas.toDataURL('image/jpeg', 0.95); 
+        const dataUrl = canvas.toDataURL('image/jpeg', 0.7); 
+        
         const base64String = dataUrl.split(',')[1];
         resolve({
           inlineData: {
