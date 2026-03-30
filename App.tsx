@@ -571,7 +571,7 @@ const App: React.FC = () => {
     });
   };
 
-  const handleUpdateMetadata = async (id: string, field: 'title' | 'description' | 'keywords' | 'category' | 'categoryShutter', value: string, language: Language) => {
+  const handleUpdateMetadata = async (id: string, field: 'title' | 'description' | 'keywords' | 'category' | 'categoryShutter' | 'categoryDream', value: string, language: Language) => {
     if (activeTab === 'logs' || activeTab === 'apikeys' || activeTab === 'quran') return;
     
     setFilesMap(prev => ({
@@ -579,7 +579,8 @@ const App: React.FC = () => {
       [activeDataKey]: prev[activeDataKey].map(f => {
         if (f.id !== id) return f;
         const newMeta = { ...f.metadata };
-        if (field === 'category' || field === 'categoryShutter') {
+        // FIX: Tambahkan categoryDream di sini agar ketikan manual bisa tersimpan
+        if (field === 'category' || field === 'categoryShutter' || field === 'categoryDream') {
            newMeta[field] = value;
         } else {
            if (language === 'ENG') {
