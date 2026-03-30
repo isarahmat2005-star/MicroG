@@ -63,8 +63,8 @@ const compressImage = async (file: File): Promise<{ inlineData: { data: string; 
     reader.onload = (e) => {
       const img = new Image();
       img.onload = () => {
-        const MAX_WIDTH = 800;  
-        const MAX_HEIGHT = 800;
+        const MAX_WIDTH = 512;  
+        const MAX_HEIGHT = 512;
         
         let width = img.width;
         let height = img.height;
