@@ -594,11 +594,11 @@ const App: React.FC = () => {
     }));
   };
 
-  // FUNGSI BARU UNTUK BUNDLING UPDATE TEKS & AUTO-FIX AI
+  // FUNGSI BARU UNTUK BUNDLING UPDATE TEKS & AUTO-FIX AI (DENGAN ANIMASI)
   const handleSaveAllText = async (id: string, textData: { title: string, description: string, keywords: string }, language: Language) => {
     if (activeTab === 'logs' || activeTab === 'apikeys' || activeTab === 'quran') return;
 
-    // 1. Simpan mentahan & UBAH STATUS JADI PROCESSING (Biar logo muter-muter muncul)
+    // 1. Simpan mentahan & UBAH STATUS KARTU INI SAJA JADI PROCESSING (Biar logo spinner muncul)
     setFilesMap(prev => ({
       ...prev,
       [activeDataKey]: prev[activeDataKey].map(f => {
@@ -609,7 +609,8 @@ const App: React.FC = () => {
         } else {
           newMeta.ind = { ...newMeta.ind, ...textData };
         }
-        return { ...f, metadata: newMeta, status: ProcessingStatus.Processing }; // <-- ANIMASI MUTAR NYALA!
+        // Ubah status HANYA untuk file ini jadi Processing agar spinner di samping nama file muncul
+        return { ...f, metadata: newMeta, status: ProcessingStatus.Processing }; 
       })
     }));
 
@@ -618,21 +619,21 @@ const App: React.FC = () => {
       const activeKey = settings.apiProvider === 'GROQ API' ? groqKeys[0] : apiKeys[0];
       const perfected = await smartFixMetadata(textData, language, settings, activeKey);
       
-      // 3. Timpa hasil AI ke State & KEMBALIKAN STATUS JADI COMPLETED
+      // 3. Timpa hasil AI ke State & KEMBALIKAN STATUS KARTU JADI COMPLETED (Spinner hilang)
       setFilesMap(prev => ({
         ...prev,
         [activeDataKey]: prev[activeDataKey].map(f => {
           if (f.id !== id) return f;
           const newMeta = { ...f.metadata };
-          newMeta.en = { ...newMeta.en, ...perfected.en };
-          newMeta.ind = { ...newMeta.ind, ...perfected.ind };
-          return { ...f, metadata: newMeta, status: ProcessingStatus.Completed }; // <-- KARTU JADI HIJAU LAGI
+          newMeta.en = { ...newMeta.en, ...(perfected.en || {}) };
+          newMeta.ind = { ...newMeta.ind, ...(perfected.ind || {}) };
+          return { ...f, metadata: newMeta, status: ProcessingStatus.Completed }; 
         })
       }));
       addLog(`Auto-Fix success for Image ID: ${id.substring(0, 5)}`, 'success', 'system');
     } catch (error) {
       console.error("AI Auto-Fix failed", error);
-      // Kalau AI gagal, status tetep dikembalikan biar gak muter terus
+      // Kembalikan status jadi Completed agar tidak muter terus jika AI gagal
       setFilesMap(prev => ({
         ...prev,
         [activeDataKey]: prev[activeDataKey].map(f => f.id === id ? { ...f, status: ProcessingStatus.Completed } : f)
