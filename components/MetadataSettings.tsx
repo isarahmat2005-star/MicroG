@@ -212,7 +212,7 @@ const MetadataSettings: React.FC<Props> = ({ settings, setSettings, isProcessing
             <label className={labelClass}>Custom Instruction (Optional)</label>
             <textarea
                 className={`${areaClass} resize-none text-xs font-mono scrollbar-thin scrollbar-thumb-gray-200 leading-tight`}
-                placeholder="Contoh: Ini gambar AI, WAJIB masukkan angka 212 ke dalam Category Dreamstime."
+                placeholder="Contoh: jadilah ahlinya SEO dalam menghasilkan metadata untuk microstock."
                 value={settings.metadataCustomInstruction || ''}
                 onChange={(e) => handleChange('metadataCustomInstruction', e.target.value)}
                 disabled={isProcessing}
