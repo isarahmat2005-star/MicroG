@@ -228,12 +228,10 @@ const App: React.FC = () => {
     const defaultSettings: AppSettings = {
       apiProvider: 'GEMINI CANVAS', 
       geminiModel: 'gemini-2.5-flash',
-      customTitle: '',
-      customKeyword: '',
+      metadataCustomInstruction: '',
       negativeMetadata: DEFAULT_FORBIDDEN_WORDS,
       ideaNegativeContext: IDEA_FORBIDDEN_WORDS,
       metadataPlatform: 'Adobe Stock',
-      metadataCustomInstruction: '',
       titleMin: 50, 
       titleMax: 100,
       slideKeyword: 40,
