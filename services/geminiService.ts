@@ -41,7 +41,7 @@ const convertSvgToWhiteBgJpeg = async (file: File): Promise<{ inlineData: { data
         ctx.fillStyle = '#FFFFFF';
         ctx.fillRect(0, 0, canvas.width, canvas.height);
         ctx.drawImage(img, 0, 0);
-        const dataUrl = canvas.toDataURL('image/jpeg', 0.95);
+        const dataUrl = canvas.toDataURL('image/jpeg', 0.6);
         const base64String = dataUrl.split(',')[1];
         resolve({
           inlineData: {
@@ -88,7 +88,7 @@ const compressImage = async (file: File): Promise<{ inlineData: { data: string; 
           return;
         }
         ctx.drawImage(img, 0, 0, width, height);
-        const dataUrl = canvas.toDataURL('image/jpeg', 0.7); 
+        const dataUrl = canvas.toDataURL('image/jpeg', 0.6); 
         
         const base64String = dataUrl.split(',')[1];
         resolve({
