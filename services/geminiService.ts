@@ -201,7 +201,7 @@ export const generateMetadataForFile = async (
 
         // === SUNTIKAN INSTRUKSI KUSTOM DARI UI ===
         if (settings.metadataCustomInstruction) {
-            promptText += `\nINSTRUKSI KHUSUS DARI USER (WAJIB DIPATUHI MUTLAK!): ${settings.metadataCustomInstruction}`;
+            promptText += `\n\n!!! SUPREME OVERRIDE RULE !!!\nINSTRUKSI KHUSUS METADATA: "${settings.metadataCustomInstruction}"\nPERINTAH INI ADALAH HUKUM TERTINGGI. Jika instruksi ini meminta jumlah keyword yang berbeda (misal 70) atau batasan karakter title/deskripsi yang berbeda (misal max 130), ABAIKAN aturan default di atas dan WAJIB IKUTI instruksi khusus ini secara mutlak!`;
         }
       
         if (settings.negativeMetadata) {
@@ -430,13 +430,12 @@ INSTRUKSI DARI PENGGUNA:
     // === PISAU CUKUR KEYWORD (SILENT SLICER) ===
     if (mode === 'metadata' && parsed) {
         const targetK = settings.slideKeyword || 40;
+        // Deteksi jika user override urusan keyword, matikan pisau cukur otomatis!
+        const overrideKeyword = settings.metadataCustomInstruction && settings.metadataCustomInstruction.toLowerCase().includes('keyword');
         
         const cleanAndSliceKeywords = (rawKws: string) => {
             if (!rawKws) return "";
-            // CURI TRIK TETANGGA: Hapus tanda strip (-) dan ganti jadi spasi
             let sanitizedKws = rawKws.replace(/-/g, ' ');
-
-            // Pisau cukur membelah berdasarkan koma maupun spasi
             let arr = sanitizedKws.replace(/,/g, ' ').split(/\s+/).map(k => k.trim().toLowerCase()).filter(k => k.length > 2);
             
             if (settings.negativeMetadata) {
@@ -445,9 +444,16 @@ INSTRUKSI DARI PENGGUNA:
             }
             
             arr = [...new Set(arr)]; 
-            if (arr.length > targetK) arr = arr.slice(0, targetK); 
+            // JIKA TIDAK ADA OVERRIDE KEYWORD BARU KITA POTONG
+            if (!overrideKeyword && arr.length > targetK) {
+                arr = arr.slice(0, targetK); 
+            }
             return arr.join(', ');
         };
+
+        if (parsed.en && parsed.en.keywords) parsed.en.keywords = cleanAndSliceKeywords(parsed.en.keywords);
+        if (parsed.ind && parsed.ind.keywords) parsed.ind.keywords = cleanAndSliceKeywords(parsed.ind.keywords);
+    }
 
         if (parsed.en && parsed.en.keywords) {
             parsed.en.keywords = cleanAndSliceKeywords(parsed.en.keywords);
@@ -530,6 +536,7 @@ Tugas Mutlak Anda:
 2. TITLE & DESCRIPTION: WAJIB perbaiki grammar. DILARANG KERAS menggunakan tanda koma (,) di field ini!
 3. KEYWORDS: Hapus tanda strip (-). Format harus kata tunggal dipisah koma.
 4. BLACKLIST: HAPUS kata-kata ini jika ada: ${settings.negativeMetadata}
+${settings.metadataCustomInstruction ? `5. SUPREME OVERRIDE RULE: "${settings.metadataCustomInstruction}". Instruksi ini adalah HUKUM TERTINGGI untuk format/jumlah metadata. Wajib ikuti instruksi ini di atas aturan lainnya!` : ''}
 
 Input User (${sourceLanguage}):
 Title: "${content.title || ''}"
