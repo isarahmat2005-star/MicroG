@@ -437,7 +437,7 @@ INSTRUKSI DARI PENGGUNA:
             let sanitizedKws = rawKws.replace(/-/g, ' ');
 
             // Pisau cukur membelah berdasarkan koma maupun spasi
-            let arr = sanitizedKws.replace(/,/g, ' ').split(/\s+/).map(k => k.trim().toLowerCase()).filter(k => k.length > 2)
+            let arr = sanitizedKws.replace(/,/g, ' ').split(/\s+/).map(k => k.trim().toLowerCase()).filter(k => k.length > 2);
             
             if (settings.negativeMetadata) {
                 const negWords = settings.negativeMetadata.split(',').map(w => w.trim().toLowerCase()).filter(w => w.length > 0);
