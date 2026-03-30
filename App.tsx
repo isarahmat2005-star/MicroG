@@ -598,7 +598,7 @@ const App: React.FC = () => {
   const handleSaveAllText = async (id: string, textData: { title: string, description: string, keywords: string }, language: Language) => {
     if (activeTab === 'logs' || activeTab === 'apikeys' || activeTab === 'quran') return;
 
-    // 1. Simpan mentahan instan ke UI biar gak lemot
+    // 1. Simpan mentahan & UBAH STATUS JADI PROCESSING (Biar logo muter-muter muncul)
     setFilesMap(prev => ({
       ...prev,
       [activeDataKey]: prev[activeDataKey].map(f => {
@@ -609,7 +609,7 @@ const App: React.FC = () => {
         } else {
           newMeta.ind = { ...newMeta.ind, ...textData };
         }
-        return { ...f, metadata: newMeta };
+        return { ...f, metadata: newMeta, status: ProcessingStatus.Processing }; // <-- ANIMASI MUTAR NYALA!
       })
     }));
 
@@ -618,7 +618,7 @@ const App: React.FC = () => {
       const activeKey = settings.apiProvider === 'GROQ API' ? groqKeys[0] : apiKeys[0];
       const perfected = await smartFixMetadata(textData, language, settings, activeKey);
       
-      // 3. Timpa hasil AI ke State
+      // 3. Timpa hasil AI ke State & KEMBALIKAN STATUS JADI COMPLETED
       setFilesMap(prev => ({
         ...prev,
         [activeDataKey]: prev[activeDataKey].map(f => {
@@ -626,12 +626,17 @@ const App: React.FC = () => {
           const newMeta = { ...f.metadata };
           newMeta.en = { ...newMeta.en, ...perfected.en };
           newMeta.ind = { ...newMeta.ind, ...perfected.ind };
-          return { ...f, metadata: newMeta };
+          return { ...f, metadata: newMeta, status: ProcessingStatus.Completed }; // <-- KARTU JADI HIJAU LAGI
         })
       }));
       addLog(`Auto-Fix success for Image ID: ${id.substring(0, 5)}`, 'success', 'system');
     } catch (error) {
       console.error("AI Auto-Fix failed", error);
+      // Kalau AI gagal, status tetep dikembalikan biar gak muter terus
+      setFilesMap(prev => ({
+        ...prev,
+        [activeDataKey]: prev[activeDataKey].map(f => f.id === id ? { ...f, status: ProcessingStatus.Completed } : f)
+      }));
       addLog(`Auto-Fix failed, using raw input.`, 'warning', 'system');
     }
   };
