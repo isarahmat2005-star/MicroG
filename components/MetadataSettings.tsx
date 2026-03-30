@@ -109,10 +109,6 @@ const MetadataSettings: React.FC<Props> = ({ settings, setSettings, isProcessing
   const inputClass = "w-full text-base p-2 border border-gray-300 rounded bg-white text-gray-900 focus:ring-2 focus:ring-blue-500 focus:outline-none focus:border-blue-500 transition-all disabled:bg-gray-100 disabled:text-gray-400 placeholder:text-gray-300 h-[42px]";
   const areaClass = "w-full text-base p-2 border border-gray-300 rounded bg-white text-gray-900 focus:ring-2 focus:ring-blue-500 focus:outline-none focus:border-blue-500 transition-all disabled:bg-gray-100 disabled:text-gray-400 placeholder:text-gray-300 h-14";
   const labelClass = "block text-sm font-medium text-gray-500 mb-1 h-5 flex items-center";
-  
-  // Logika dinamis untuk label Title / Description
-  const usesDescription = ['Shutterstock', 'Dreamstime', 'Vecteezy', 'Arabstock'].includes(settings.metadataPlatform);
-  const titleLabel = usesDescription ? 'Description' : 'Title';
 
   return (
     <div className="bg-white p-4 rounded-lg shadow-sm border border-blue-200 flex flex-col gap-4">
@@ -210,34 +206,21 @@ const MetadataSettings: React.FC<Props> = ({ settings, setSettings, isProcessing
         </button>
       </div>
 
+      {/* TAMPILAN BARU: Custom Instruction dan Negative Metadata */}
       <div className="grid grid-cols-1 gap-3">
-        <div className="grid grid-cols-2 gap-3">
-            <div>
-              <label className={labelClass}>Custom {titleLabel}</label>
-              <textarea
-                  className={`${areaClass} resize-none text-xs font-mono scrollbar-thin scrollbar-thumb-gray-200 leading-tight`}
-                  placeholder={`Priority ${titleLabel.toLowerCase()}...`}
-                  value={settings.customTitle}
-                  onChange={(e) => handleChange('customTitle', e.target.value)}
-                  disabled={isProcessing}
-                  spellCheck={false}
-              />
-            </div>
-            <div>
-              <label className={labelClass}>Custom Keyword</label>
-              <textarea
-                  className={`${areaClass} resize-none text-xs font-mono scrollbar-thin scrollbar-thumb-gray-200 leading-tight`}
-                  placeholder="Priority keyword..."
-                  value={settings.customKeyword}
-                  onChange={(e) => handleChange('customKeyword', e.target.value)}
-                  disabled={isProcessing}
-                  spellCheck={false}
-              />
-            </div>
+        <div className="col-span-full">
+            <label className={labelClass}>Custom Instruction (Optional)</label>
+            <textarea
+                className={`${areaClass} resize-none text-xs font-mono scrollbar-thin scrollbar-thumb-gray-200 leading-tight`}
+                placeholder="Contoh: Ini gambar AI, WAJIB masukkan angka 212 ke dalam Category Dreamstime."
+                value={settings.metadataCustomInstruction || ''}
+                onChange={(e) => handleChange('metadataCustomInstruction', e.target.value)}
+                disabled={isProcessing}
+                spellCheck={false}
+            />
         </div>
         
-        <div className="col-span-1">
-          {/* UBAH LABEL JADI LEBIH TEGAS DI SINI */}
+        <div className="col-span-full">
           <label className={`${labelClass} text-red-600 font-bold`}>Negative Metadata (Kata Terlarang)</label>
           <textarea
             className={`${areaClass} resize-none text-xs font-mono scrollbar-thin scrollbar-thumb-gray-200 leading-tight border-red-200 bg-red-50/30 focus:ring-red-500 focus:border-red-500`}
