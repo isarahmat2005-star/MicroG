@@ -99,8 +99,7 @@ export type MetadataPlatform = 'Adobe Stock' | 'Shutterstock' | 'Dreamstime' | '
 export interface AppSettings {
   apiProvider: ApiProvider;
   geminiModel: string;   
-  customTitle: string;
-  customKeyword: string;
+  metadataCustomInstruction: string;
   negativeMetadata: string; 
   ideaNegativeContext: string; 
   metadataPlatform: MetadataPlatform; // <--- DIUBAH JADI PANGGILAN 7 PLATFORM
