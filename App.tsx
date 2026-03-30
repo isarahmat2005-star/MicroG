@@ -301,6 +301,9 @@ const App: React.FC = () => {
   const activeKeysRef = useRef<Set<string>>(new Set());
   const cooldownKeysRef = useRef<Map<string, number>>(new Map());
   const nextKeyIdxRef = useRef(0);
+
+  const keyFailuresRef = useRef<Map<string, number>>(new Map()); // Ingatan gagal per API Key
+  const globalFailuresRef = useRef<number>(0); // Ingatan gagal global (Canvas Mode)
   
   const processingFilesRef = useRef<FileItem[]>([]); 
 
@@ -941,6 +944,9 @@ const App: React.FC = () => {
              const keyLabel = settings.apiProvider === 'GEMINI CANVAS' ? `Canvas Routing` : `Key ${currentKeyList.indexOf(selectedKey) + 1}`;
              addLog(`Worker ${workerId} (${keyLabel}) [Success] ${currentFileItem.file.name}`, 'success', mode);
              if (selectedKey) activeKeysRef.current.delete(selectedKey);
+
+             if (selectedKey) keyFailuresRef.current.set(selectedKey, 0); // Reset dosa kunci
+             globalFailuresRef.current = 0; // Reset dosa global
         }
 
       } catch (error: any) {
@@ -954,14 +960,25 @@ const App: React.FC = () => {
         const isTemporaryError = errorMsgLower.includes('429') || errorMsgLower.includes('quota') || errorMsgLower.includes('overloaded') || errorMsgLower.includes('timeout') || errorMsgLower.includes('fetch failed');
   
         if (isTemporaryError) {
-          queueRef.current.push(fileId);
+          // 1. Taruh file di antrean PALING DEPAN (unshift), bukan di belakang (push)
+          queueRef.current.unshift(fileId);
           
           if ((settings.apiProvider === 'GEMINI API' || settings.apiProvider === 'GROQ API') && selectedKey) {
-             cooldownKeysRef.current.set(selectedKey, Date.now() + 60000); 
-             addLog(`Worker ${workerId} rate limited (Switching Key / Cooldown 60s). Details: ${rawErrorMsg}`, 'warning', mode);
+             // 2. Hitung udah berapa kali kunci ini kena tilang beruntun
+             const fails = (keyFailuresRef.current.get(selectedKey) || 0) + 1;
+             keyFailuresRef.current.set(selectedKey, fails);
+
+             // 3. Matematika Backoff: 2s, 4s, 8s, 16s, 32s, mentok di 60s
+             const backoffMs = Math.min(2000 * Math.pow(2, fails - 1), 60000);
+             cooldownKeysRef.current.set(selectedKey, Date.now() + backoffMs); 
+             
+             addLog(`Worker ${workerId} rate limited (Key mundur ${backoffMs/1000}s). Retries: ${fails}`, 'warning', mode);
           } else {
-             globalCooldownRef.current = Date.now() + 60000; 
-             addLog(`${settings.apiProvider} SERVER LIMIT! All workers resting for 60s. Details: ${rawErrorMsg}`, 'warning', mode);
+             globalFailuresRef.current += 1;
+             const backoffMs = Math.min(2000 * Math.pow(2, globalFailuresRef.current - 1), 60000);
+             globalCooldownRef.current = Date.now() + backoffMs; 
+             
+             addLog(`SERVER LIMIT! All resting for ${backoffMs/1000}s. Retries: ${globalFailuresRef.current}`, 'warning', mode);
           }
           
           if (fileIndex !== -1) {
