@@ -14,7 +14,7 @@ import QuranPanel from './components/QuranPanel';
 import QcSettings from './components/QcSettings'; 
 import QcCard from './components/QcCard';
 import LogPanel from './components/LogPanel'; 
-import { generateMetadataForFile, translateMetadataContent } from './services/geminiService';
+import { generateMetadataForFile, smartFixMetadata } from './services/geminiService';
 import { downloadCSV, downloadTXT, extractSlugFromUrl } from './utils/helpers';
 import { AppSettings, FileItem, FileType, ProcessingStatus, Language, AppMode, ApiProvider, LogEntry } from './types'; 
 import { INITIAL_METADATA } from './constants';
@@ -574,12 +574,12 @@ const App: React.FC = () => {
   const handleUpdateMetadata = async (id: string, field: 'title' | 'description' | 'keywords' | 'category' | 'categoryShutter' | 'categoryDream', value: string, language: Language) => {
     if (activeTab === 'logs' || activeTab === 'apikeys' || activeTab === 'quran') return;
     
+    // 1. Simpan dulu ketikan mentah user secara instan biar UI gak lemot/nge-freeze
     setFilesMap(prev => ({
       ...prev,
       [activeDataKey]: prev[activeDataKey].map(f => {
         if (f.id !== id) return f;
         const newMeta = { ...f.metadata };
-        // FIX: Tambahkan categoryDream di sini agar ketikan manual bisa tersimpan
         if (field === 'category' || field === 'categoryShutter' || field === 'categoryDream') {
            newMeta[field] = value;
         } else {
@@ -593,7 +593,8 @@ const App: React.FC = () => {
       })
     }));
 
-    if (field === 'title' || field === 'keywords') {
+    // 2. PANGGIL SATPAM AI JIKA YANG DIEDIT ADALAH TEKS
+    if (field === 'title' || field === 'description' || field === 'keywords') {
       const file = filesMap[activeDataKey].find(f => f.id === id);
       if (!file) return; 
       
@@ -602,24 +603,29 @@ const App: React.FC = () => {
           ? { ...file.metadata.en, [field]: value } 
           : { ...file.metadata.ind, [field]: value };
         
-        const translated = await translateMetadataContent(currentSourceMeta, language, "");
+        const activeKey = settings.apiProvider === 'GROQ API' ? groqKeys[0] : apiKeys[0];
         
+        // Jangan lupa import fungsi smartFixMetadata ini dari geminiService.ts di bagian atas App.tsx ya Lek!
+        // import { generateMetadataForFile, smartFixMetadata, translateText } from './services/geminiService';
+        const perfected = await smartFixMetadata(currentSourceMeta, language, settings, activeKey);
+        
+        // 3. Timpa hasil ketikan mentah tadi dengan hasil sempurnya dari AI
         setFilesMap(prev => ({
           ...prev,
           [activeDataKey]: prev[activeDataKey].map(f => {
             if (f.id !== id) return f;
             const newMeta = { ...f.metadata };
-            // FIX: Gunakan spread operator biar data 'description' tidak terhapus saat auto-translate!
-            if (language === 'ENG') {
-              newMeta.ind = { ...newMeta.ind, title: translated.title, keywords: translated.keywords };
-            } else {
-              newMeta.en = { ...newMeta.en, title: translated.title, keywords: translated.keywords };
-            }
+            // Gabungkan hasil koreksi AI secara silang
+            newMeta.en = { ...newMeta.en, ...perfected.en };
+            newMeta.ind = { ...newMeta.ind, ...perfected.ind };
             return { ...f, metadata: newMeta };
           })
         }));
+        
+        addLog(`Auto-Fix & Translate success for ${field}`, 'success', 'system');
       } catch (error) {
-        console.error("Sync translation failed", error);
+        console.error("AI Auto-Fix failed", error);
+        addLog(`Auto-Fix failed for ${field}`, 'warning', 'system');
       }
     }
   };
