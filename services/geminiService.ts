@@ -357,7 +357,6 @@ INSTRUKSI DARI PENGGUNA:
         
         let expectedJsonSchema = "";
         if (mode === 'metadata') {
-            // UPDATE JSON EXPECTATION GROQ 
             expectedJsonSchema = `\n\nEXPECTED JSON FORMAT:\n{\n  "en": { "title": "string", "description": "string", "keywords": "string" },\n  "ind": { "title": "string", "description": "string", "keywords": "string" },\n  "categoryAdobe": "string",\n  "categoryShutter": "string",\n  "categoryDream": "string"\n}`;
         } else if (mode === 'idea') {
             expectedJsonSchema = `\n\nEXPECTED JSON FORMAT:\n{\n  "en_idea": "string",\n  "ind_idea": "string"\n}`;
@@ -431,7 +430,7 @@ INSTRUKSI DARI PENGGUNA:
     if (mode === 'metadata' && parsed) {
         const targetK = settings.slideKeyword || 40;
         // Deteksi jika user override urusan keyword, matikan pisau cukur otomatis!
-        const overrideKeyword = settings.metadataCustomInstruction && settings.metadataCustomInstruction.toLowerCase().includes('keyword');
+        const overrideKeyword = settings.metadataCustomInstruction && /keyword|kata kunci/i.test(settings.metadataCustomInstruction);
         
         const cleanAndSliceKeywords = (rawKws: string) => {
             if (!rawKws) return "";
@@ -450,10 +449,6 @@ INSTRUKSI DARI PENGGUNA:
             }
             return arr.join(', ');
         };
-
-        if (parsed.en && parsed.en.keywords) parsed.en.keywords = cleanAndSliceKeywords(parsed.en.keywords);
-        if (parsed.ind && parsed.ind.keywords) parsed.ind.keywords = cleanAndSliceKeywords(parsed.ind.keywords);
-    }
 
         if (parsed.en && parsed.en.keywords) {
             parsed.en.keywords = cleanAndSliceKeywords(parsed.en.keywords);
