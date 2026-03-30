@@ -202,6 +202,12 @@ export const generateMetadataForFile = async (
         if (settings.customTitle || settings.customKeyword) {
             promptText += `\nINFO TAMBAHAN DARI USER (Gunakan jika relevan): \nTitle/Description Base: ${settings.customTitle}\nKeywords: ${settings.customKeyword}`;
         }
+
+        // === SUNTIKAN INSTRUKSI KUSTOM DARI UI ===
+        if (settings.metadataCustomInstruction) {
+            promptText += `\nINSTRUKSI KHUSUS DARI USER (WAJIB DIPATUHI MUTLAK!): ${settings.metadataCustomInstruction}`;
+        }
+      
         if (settings.negativeMetadata) {
             promptText += `\nNEGATIVE METADATA (Kata Terlarang): ${settings.negativeMetadata}`;
         }
