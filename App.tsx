@@ -237,7 +237,7 @@ const App: React.FC = () => {
       slideKeyword: 40,
       videoFrameCount: 3,
       workerCount: 5,
-      apiDelay: 3,      
+      apiDelay: 3,     
       ideaMode: 'free', 
       ideaQuantity: 30, 
       ideaCategory: 'auto',
@@ -571,10 +571,10 @@ const App: React.FC = () => {
     });
   };
 
+  // FUNGSI LAMA UNTUK UPDATE SINGLE FIELD (Misal Kategori)
   const handleUpdateMetadata = async (id: string, field: 'title' | 'description' | 'keywords' | 'category' | 'categoryShutter' | 'categoryDream', value: string, language: Language) => {
     if (activeTab === 'logs' || activeTab === 'apikeys' || activeTab === 'quran') return;
     
-    // 1. Simpan dulu ketikan mentah user secara instan biar UI gak lemot/nge-freeze
     setFilesMap(prev => ({
       ...prev,
       [activeDataKey]: prev[activeDataKey].map(f => {
@@ -592,41 +592,47 @@ const App: React.FC = () => {
         return { ...f, metadata: newMeta };
       })
     }));
+  };
 
-    // 2. PANGGIL SATPAM AI JIKA YANG DIEDIT ADALAH TEKS
-    if (field === 'title' || field === 'description' || field === 'keywords') {
-      const file = filesMap[activeDataKey].find(f => f.id === id);
-      if (!file) return; 
+  // FUNGSI BARU UNTUK BUNDLING UPDATE TEKS & AUTO-FIX AI
+  const handleSaveAllText = async (id: string, textData: { title: string, description: string, keywords: string }, language: Language) => {
+    if (activeTab === 'logs' || activeTab === 'apikeys' || activeTab === 'quran') return;
+
+    // 1. Simpan mentahan instan ke UI biar gak lemot
+    setFilesMap(prev => ({
+      ...prev,
+      [activeDataKey]: prev[activeDataKey].map(f => {
+        if (f.id !== id) return f;
+        const newMeta = { ...f.metadata };
+        if (language === 'ENG') {
+          newMeta.en = { ...newMeta.en, ...textData };
+        } else {
+          newMeta.ind = { ...newMeta.ind, ...textData };
+        }
+        return { ...f, metadata: newMeta };
+      })
+    }));
+
+    // 2. Panggil Satpam AI 1x Saja
+    try {
+      const activeKey = settings.apiProvider === 'GROQ API' ? groqKeys[0] : apiKeys[0];
+      const perfected = await smartFixMetadata(textData, language, settings, activeKey);
       
-      try {
-        const currentSourceMeta = language === 'ENG' 
-          ? { ...file.metadata.en, [field]: value } 
-          : { ...file.metadata.ind, [field]: value };
-        
-        const activeKey = settings.apiProvider === 'GROQ API' ? groqKeys[0] : apiKeys[0];
-        
-        // Jangan lupa import fungsi smartFixMetadata ini dari geminiService.ts di bagian atas App.tsx ya Lek!
-        // import { generateMetadataForFile, smartFixMetadata, translateText } from './services/geminiService';
-        const perfected = await smartFixMetadata(currentSourceMeta, language, settings, activeKey);
-        
-        // 3. Timpa hasil ketikan mentah tadi dengan hasil sempurnya dari AI
-        setFilesMap(prev => ({
-          ...prev,
-          [activeDataKey]: prev[activeDataKey].map(f => {
-            if (f.id !== id) return f;
-            const newMeta = { ...f.metadata };
-            // Gabungkan hasil koreksi AI secara silang
-            newMeta.en = { ...newMeta.en, ...perfected.en };
-            newMeta.ind = { ...newMeta.ind, ...perfected.ind };
-            return { ...f, metadata: newMeta };
-          })
-        }));
-        
-        addLog(`Auto-Fix & Translate success for ${field}`, 'success', 'system');
-      } catch (error) {
-        console.error("AI Auto-Fix failed", error);
-        addLog(`Auto-Fix failed for ${field}`, 'warning', 'system');
-      }
+      // 3. Timpa hasil AI ke State
+      setFilesMap(prev => ({
+        ...prev,
+        [activeDataKey]: prev[activeDataKey].map(f => {
+          if (f.id !== id) return f;
+          const newMeta = { ...f.metadata };
+          newMeta.en = { ...newMeta.en, ...perfected.en };
+          newMeta.ind = { ...newMeta.ind, ...perfected.ind };
+          return { ...f, metadata: newMeta };
+        })
+      }));
+      addLog(`Auto-Fix success for Image ID: ${id.substring(0, 5)}`, 'success', 'system');
+    } catch (error) {
+      console.error("AI Auto-Fix failed", error);
+      addLog(`Auto-Fix failed, using raw input.`, 'warning', 'system');
     }
   };
   
