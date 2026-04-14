@@ -112,7 +112,7 @@ const App: React.FC = () => {
           if (menuScrollRef.current && settingBtnRef.current) {
               const offsetLeft = settingBtnRef.current.offsetLeft;
               menuScrollRef.current.scrollTo({
-                  left: offsetLeft - 6,
+                  left: 0,
                   behavior: 'smooth'
               });
           }
