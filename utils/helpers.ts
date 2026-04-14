@@ -305,7 +305,7 @@ export const downloadTXT = (files: FileItem[], customFilename?: string): string 
   return fileName;
 };
 
-// Helper to extract a dynamic number of frames from a video file with downscaling
+/// Helper to extract a dynamic number of frames from a video file with EXTREME DOWNSCALING
 export const extractVideoFrames = async (videoFile: File, frameCount: number = 3): Promise<string[]> => {
   return new Promise((resolve, reject) => {
     const video = document.createElement('video');
@@ -332,7 +332,8 @@ export const extractVideoFrames = async (videoFile: File, frameCount: number = 3
     video.crossOrigin = "anonymous";
 
     video.onloadedmetadata = () => {
-      const MAX_SIZE = 1024;
+      // 🚀 EXTREME COMPRESSION: Turun drastis dari 1024px jadi cuma 320px!
+      const MAX_SIZE = 320; 
       let width = video.videoWidth;
       let height = video.videoHeight;
 
@@ -361,7 +362,8 @@ export const extractVideoFrames = async (videoFile: File, frameCount: number = 3
       }
       
       ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
-      frames.push(canvas.toDataURL('image/jpeg', 0.8).split(',')[1]);
+      // 🚀 EXTREME COMPRESSION: Kualitas diturunkan dari 0.8 jadi 0.5
+      frames.push(canvas.toDataURL('image/jpeg', 0.5).split(',')[1]);
 
       currentStep++;
       if (currentStep < timestamps.length) {
