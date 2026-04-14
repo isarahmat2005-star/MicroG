@@ -30,17 +30,6 @@ export interface FileMetadata {
   categoryDream?: string; 
 }
 
-// === STRUKTUR RAPOR QC ===
-export interface QcResult {
-  score: number;             // Skor Kelayakan (1-100)
-  status: 'Pass' | 'Fail' | 'Warning'; 
-  technicalIssues: string[]; // Masalah teknis (Blur, Noise, Pencahayaan)
-  ipIssues: string[];        // Pelanggaran Hak Cipta (Logo, Brand, Muka Orang)
-  commercialAdvice: string;  // Nilai jual komersial (Saran dari AI)
-  resolutionInfo?: string;   // Pengecekan lokal (Misal: "Lolos (>4MP)" atau "Gagal (<4MP)")
-}
-// =========================
-
 export interface FileItem {
   id: string;
   file: File;
