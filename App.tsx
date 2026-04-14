@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef, useLayoutEffect } from 'react';
-import { Download, Trash2, Wand2, UploadCloud, FolderOutput, CheckCircle, XCircle, Clock, Database, Activity, Sparkles, Eraser, Lightbulb, Command, Settings, Pause, Play, Copy, Loader2, Menu, PlayCircle, Coffee, Volume2, X, ShieldCheck } from 'lucide-react';
+import { Download, Trash2, Wand2, UploadCloud, FolderOutput, CheckCircle, XCircle, Clock, Database, Activity, Sparkles, Eraser, Lightbulb, Command, Settings, Pause, Play, Copy, Loader2, Menu, PlayCircle, Coffee, Volume2, X } from 'lucide-react';
 import { v4 as uuidv4 } from 'uuid';
 
 import ApiKeyPanel from './components/ApiKeyPanel';
@@ -11,8 +11,6 @@ import IdeaListComponent from './components/IdeaListComponent';
 import PromptListComponent from './components/PromptListComponent';
 import PreviewModal from './components/PreviewModal';
 import QuranPanel from './components/QuranPanel'; 
-import QcSettings from './components/QcSettings'; 
-import QcCard from './components/QcCard';
 import LogPanel from './components/LogPanel'; 
 import { generateMetadataForFile, smartFixMetadata } from './services/geminiService';
 import { downloadCSV, downloadTXT, extractSlugFromUrl } from './utils/helpers';
@@ -81,10 +79,8 @@ const DraggablePlayer: React.FC<{ children: React.ReactNode }> = ({ children }) 
     </div>
   );
 };
-// ============================================
 
 const DEFAULT_FORBIDDEN_WORDS = "vector, illustration, clipart, drawing, digital art, 3d render, template, layout, drone, gopro, 8K, 60fps, Apple, Samsung, Nike, Adidas, Gucci, Rolex, Coca-Cola, Pepsi, Disney, Lego, Microsoft, Google, Sony, Nikon, Canon, Facebook, Instagram, Twitter, TikTok, iPhone, iPad, Galaxy, Eiffel Tower Night, Hollywood Sign, Red Cross, Olympic Rings, United Nations, Vatican City, 4K, HD, High Quality, Award Winning, Best, Professional, Photo, Image, Shot on, Shot with, Watermark, Logo, Signature, Copyright, Trademark, Brand, Patent, Patent Pending, All Rights Reserved, Blurred, Out of focus, Grainy, Noisy, Low resolution, Porn, Sex, Nude, Violence, Bloody, Israel, North Korea, Crimea, Restricted Area, Top Secret";
-
 const IDEA_FORBIDDEN_WORDS = "porn, sex, nude, naked, xxx, erotic, boobs, tits, pussy, fuck, dick, cock, penis, vagina, ass, orgasm, masturbate, bitch, whore, slut, milf, fetish, bdsm, rape, incest, anal, blowjob, cum, ejaculate, hentai, stripper, escort, hot girl, 18+, adult, bathroom, toilet, change clothes, undress, bhabhi, auntie, desi, upskirt, birth, pregnant, bloody, injury, gore";
 
 const rawStringify = (val: any): string => {
@@ -125,7 +121,6 @@ const App: React.FC = () => {
 
   const [ispaidUnlocked, setIspaidUnlocked] = useState(false);
 
-  // === STATE & REF UNTUK RADIO GAIB (MUROTTAL) ===
   const audioRef = useRef<HTMLAudioElement>(null);
   const [currentSurahId, setCurrentSurahId] = useState<number | null>(null);
   const [isAudioPlaying, setIsAudioPlaying] = useState(false);
@@ -138,7 +133,6 @@ const App: React.FC = () => {
   const [audioBaseUrl, setAudioBaseUrl] = useState("");
   const [quranSurahs, setQuranSurahs] = useState<any[]>([]);
 
-  // === FUNGSI ADD LOG ===
   const addLog = (message: string, type: 'info' | 'success' | 'error' | 'warning' = 'info', mode: AppMode | 'system' | 'quran' = 'system') => {
     const now = new Date();
     const timeString = now.toLocaleTimeString([], { hour12: false, hour: '2-digit', minute: '2-digit', second: '2-digit', fractionalSecondDigits: 3 });
@@ -161,7 +155,6 @@ const App: React.FC = () => {
         if (baseUrl) setAudioBaseUrl(baseUrl);
         if (surahsList) setQuranSurahs(surahsList);
         
-        // === SENSOR AUDIO MUROTTAL ===
         addLog(`Playing Surah: ${surahName} - ${reciterName}`, 'info', 'quran');
       }
       audioRef.current.play();
@@ -201,9 +194,7 @@ const App: React.FC = () => {
   const closeMiniPlayer = () => {
       setShowMiniPlayer(false);
   };
-  // ===============================================
 
-  // === LACI MEMORI API KEMBAR (GEMINI & GROQ) ===
   const [apiKeys, setApiKeys] = useState<string[]>(() => {
       try {
           const saved = localStorage.getItem('ISA_GEMINI_KEYS');
@@ -282,7 +273,6 @@ const App: React.FC = () => {
     idea_paid: [],
     prompt_text: [], 
     prompt_file: [],
-    qc: []
   });
   
   const [isProcessing, setIsProcessing] = useState(false);
@@ -301,8 +291,8 @@ const App: React.FC = () => {
   const cooldownKeysRef = useRef<Map<string, number>>(new Map());
   const nextKeyIdxRef = useRef(0);
 
-  const keyFailuresRef = useRef<Map<string, number>>(new Map()); // Ingatan gagal per API Key
-  const globalFailuresRef = useRef<number>(0); // Ingatan gagal global (Canvas Mode)
+  const keyFailuresRef = useRef<Map<string, number>>(new Map()); 
+  const globalFailuresRef = useRef<number>(0); 
   
   const processingFilesRef = useRef<FileItem[]>([]); 
 
@@ -313,7 +303,6 @@ const App: React.FC = () => {
     if (activeTab === 'idea') return settings.ideaMode === 'free' ? 'idea_free' : 'idea_paid';
     if (activeTab === 'prompt') return settings.promptPlatform === 'file' ? 'prompt_file' : 'prompt_text';
     if (activeTab === 'metadata') return 'metadata_universal';
-    if (activeTab === 'qc') return 'qc';
     return activeTab as string;
   };
 
@@ -351,7 +340,6 @@ const App: React.FC = () => {
             const processingDataKey = (() => {
                 if (processingMode === 'idea') return settings.ideaMode === 'free' ? 'idea_free' : 'idea_paid';
                 if (processingMode === 'prompt') return settings.promptPlatform === 'file' ? 'prompt_file' : 'prompt_text';
-                if (processingMode === 'qc') return 'qc';
                 return 'metadata_universal';
             })();
 
@@ -374,18 +362,19 @@ const App: React.FC = () => {
   const handleNavigation = (tab: AppMode | 'logs' | 'apikeys' | 'quran') => {
     setActiveTab(tab);
     window.scrollTo(0, 0);
-    
-    // === SENSOR NAVIGASI MENU UTAMA ===
+
     const tabNameMap: Record<string, string> = {
+
         'apikeys': 'API Configuration',
         'quran': 'Murottal Al-Quran',
         'idea': 'Idea Generation',
         'prompt': 'Prompt Engineering',
         'metadata': 'Metadata Extraction',
-        'qc': 'Quality Control',
         'logs': 'System Logs'
+
     };
-    if (tab !== 'logs') { // Jangan log kalau cuma buka tab logs biar gak menuh-menuhin
+    
+    if (tab !== 'logs') { 
         addLog(`Opening tab ${tab}`, 'info', 'system');
     }
   };
@@ -571,7 +560,6 @@ const App: React.FC = () => {
     });
   };
 
-  // FUNGSI LAMA UNTUK UPDATE SINGLE FIELD (Misal Kategori)
   const handleUpdateMetadata = async (id: string, field: 'title' | 'description' | 'keywords' | 'category' | 'categoryShutter' | 'categoryDream', value: string, language: Language) => {
     if (activeTab === 'logs' || activeTab === 'apikeys' || activeTab === 'quran') return;
     
@@ -594,11 +582,9 @@ const App: React.FC = () => {
     }));
   };
 
-  // 🚀 FUNGSI BARU BUNDLING AUTO-FIX AI (ANIMASI LOKAL DI KARTU SAJA)
   const handleSaveAllText = async (id: string, textData: { title: string, description: string, keywords: string }, language: Language) => {
     if (activeTab === 'logs' || activeTab === 'apikeys' || activeTab === 'quran') return;
 
-    // 1. Simpan Teks Mentahan & Ubah Kartu Ini Saja Jadi Processing (Agar spinner muncul)
     setFilesMap(prev => ({
       ...prev,
       [activeDataKey]: prev[activeDataKey].map(f => {
@@ -609,23 +595,19 @@ const App: React.FC = () => {
         } else {
           newMeta.ind = { ...newMeta.ind, ...textData };
         }
-        // Hanya mengubah file ini saja jadi Processing, tidak ngefek ke aplikasi global
         return { ...f, metadata: newMeta, status: ProcessingStatus.Processing }; 
       })
     }));
 
     try {
       const activeKey = settings.apiProvider === 'GROQ API' ? groqKeys[0] : apiKeys[0];
-      // 2. Panggil AI untuk membersihkan teks dan menterjemahkan
       const perfected = await smartFixMetadata(textData, language, settings, activeKey);
       
-      // 3. Timpa hasil AI yang sudah rapi & Kembalikan status kartu jadi Completed (Spinner Mati)
       setFilesMap(prev => ({
         ...prev,
         [activeDataKey]: prev[activeDataKey].map(f => {
           if (f.id !== id) return f;
           const newMeta = { ...f.metadata };
-          // Validasi objek perfected sebelum ditimpa agar tidak error
           if (perfected && perfected.en) newMeta.en = { ...newMeta.en, ...perfected.en };
           if (perfected && perfected.ind) newMeta.ind = { ...newMeta.ind, ...perfected.ind };
           return { ...f, metadata: newMeta, status: ProcessingStatus.Completed }; 
@@ -634,7 +616,6 @@ const App: React.FC = () => {
       addLog(`Auto-Fix success for Image ID: ${id.substring(0, 5)}`, 'success', 'system');
     } catch (error) {
       console.error("AI Auto-Fix failed", error);
-      // Kalau gagal (misal koneksi AI putus), kembalikan jadi Completed agar spinner tidak muter selamanya
       setFilesMap(prev => ({
         ...prev,
         [activeDataKey]: prev[activeDataKey].map(f => f.id === id ? { ...f, status: ProcessingStatus.Completed } : f)
@@ -690,7 +671,6 @@ const App: React.FC = () => {
           return;
       }
 
-      // === LOGIKA CEK KUNCI PROVIDER YANG BENAR ===
       if (settings.apiProvider === 'GEMINI API' && apiKeys.length === 0) {
           alert("Kamu memilih mode GEMINI API tapi belum memasukkan API Key satupun. Silakan masukkan API Key di menu Settings.");
           return;
@@ -816,7 +796,7 @@ const App: React.FC = () => {
         return;
       }
   
-      // ==================== MODE METADATA & QC ====================
+      // ==================== MODE METADATA ====================
       const targetList = filesMap[activeDataKey];
       const targetFiles = targetList.filter(f => f.status === ProcessingStatus.Pending || f.status === ProcessingStatus.Failed);
       
@@ -841,7 +821,6 @@ const App: React.FC = () => {
       const processingDataKey = (() => {
         if (mode === 'idea') return settings.ideaMode === 'free' ? 'idea_free' : 'idea_paid';
         if (mode === 'prompt') return settings.promptPlatform === 'file' ? 'prompt_file' : 'prompt_text';
-        if (mode === 'qc') return 'qc';
         return 'metadata_universal';
       })();
 
@@ -856,7 +835,6 @@ const App: React.FC = () => {
       const isLocalExtraction = mode === 'idea' && settings.ideaMode === 'paid';
       const userMaxWorkers = isLocalExtraction ? (settings.ideaWorkerCount || 50) : (settings.workerCount || 5);
       
-      // === LOGIKA BOTTLENECK CERDAS UNTUK WORKER ===
       let maxConcurrency = Math.min(userMaxWorkers, filesToProcess.length);
       
       if (settings.apiProvider === 'GEMINI API' && apiKeys.length > 0) {
@@ -878,7 +856,6 @@ const App: React.FC = () => {
       }
   };
   
-  // 🚀 FUNGSI PAUSE/RESUME & RE-SCANNING
   const togglePause = () => {
       if (!isProcessing) return;
       const nextPausedState = !isPaused;
@@ -886,24 +863,21 @@ const App: React.FC = () => {
       pausedRef.current = nextPausedState;
       
       if (!nextPausedState) {
-          // KETIKA RESUME: Aplikasi nge-scan mandiri dari baris paling atas untuk mencari kartu yang berstatus Pending
           const processingDataKey = (() => {
             if (processingMode === 'idea') return settings.ideaMode === 'free' ? 'idea_free' : 'idea_paid';
             if (processingMode === 'prompt') return settings.promptPlatform === 'file' ? 'prompt_file' : 'prompt_text';
-            if (processingMode === 'qc') return 'qc';
             return 'metadata_universal';
           })();
           
           setFilesMap(currentMap => {
               const currentList = currentMap[processingDataKey] || [];
-              const pendingIds = currentList.filter(f => f.status === ProcessingStatus.Pending).map(f => f.id);
-              queueRef.current = pendingIds; // Bangun ulang antrean dari awal
+              const pendingIds = currentList.filter(f => f.status === ProcessingStatus.Pending || f.status === ProcessingStatus.Failed).map(f => f.id);
+              queueRef.current = pendingIds; 
               return currentMap;
           });
 
           addLog("Processing resumed. Re-scanning pending files from top...", 'info', processingMode || 'metadata');
       } else {
-          // KETIKA PAUSE: Aplikasi ngasih notif dan membuka kunci UI
           addLog("Processing paused. UI and settings unlocked.", 'warning', processingMode || 'metadata');
       }
   };
@@ -932,7 +906,6 @@ const App: React.FC = () => {
 
       let selectedKey: string = "";
       
-      // === AMBIL LACI KUNCI YANG SESUAI PROVIDER ===
       const currentKeyList = settings.apiProvider === 'GROQ API' ? groqKeys : apiKeys;
       const totalKeys = currentKeyList.length;
 
@@ -960,7 +933,6 @@ const App: React.FC = () => {
           activeKeysRef.current.add(selectedKey);
       }
 
-      // 🚀 IDEA MODE 2 (BYPASS AI, MURNI OFFLINE)
       const isLocalExtraction = mode === 'idea' && settings.ideaMode === 'paid';
       const fileIndex = processingFilesRef.current.findIndex(f => f.id === fileId);
 
@@ -974,7 +946,6 @@ const App: React.FC = () => {
         if (!currentFileItem) throw new Error("File aborted or not found");
 
         if (isLocalExtraction) {
-             // BYPASS API AI: Langsung status Completed (cepat, tanpa internet)
              if (fileIndex !== -1) {
                  processingFilesRef.current[fileIndex] = { 
                      ...processingFilesRef.current[fileIndex], 
@@ -982,13 +953,13 @@ const App: React.FC = () => {
                  };
              }
         } else {
-             const { metadata, thumbnail, generatedImageUrl, qcResult } = await generateMetadataForFile(currentFileItem, settings, selectedKey, mode);
+             const { metadata, thumbnail, generatedImageUrl } = await generateMetadataForFile(currentFileItem, settings, selectedKey, mode);
       
              if (fileIndex !== -1) {
                  processingFilesRef.current[fileIndex] = { 
                      ...processingFilesRef.current[fileIndex], 
                      status: ProcessingStatus.Completed, 
-                     metadata, thumbnail, generatedImageUrl, qcResult 
+                     metadata, thumbnail, generatedImageUrl 
                  };
              }
              
@@ -996,8 +967,8 @@ const App: React.FC = () => {
              addLog(`Worker ${workerId} (${keyLabel}) [Success] ${currentFileItem.file.name}`, 'success', mode);
              if (selectedKey) activeKeysRef.current.delete(selectedKey);
 
-             if (selectedKey) keyFailuresRef.current.set(selectedKey, 0); // Reset dosa kunci
-             globalFailuresRef.current = 0; // Reset dosa global
+             if (selectedKey) keyFailuresRef.current.set(selectedKey, 0); 
+             globalFailuresRef.current = 0; 
         }
 
       } catch (error: any) {
@@ -1011,15 +982,12 @@ const App: React.FC = () => {
         const isTemporaryError = errorMsgLower.includes('429') || errorMsgLower.includes('quota') || errorMsgLower.includes('overloaded') || errorMsgLower.includes('timeout') || errorMsgLower.includes('fetch failed');
   
         if (isTemporaryError) {
-          // 1. Taruh file di antrean PALING DEPAN (unshift), bukan di belakang (push)
           queueRef.current.unshift(fileId);
           
           if ((settings.apiProvider === 'GEMINI API' || settings.apiProvider === 'GROQ API') && selectedKey) {
-             // 2. Hitung udah berapa kali kunci ini kena tilang beruntun
              const fails = (keyFailuresRef.current.get(selectedKey) || 0) + 1;
              keyFailuresRef.current.set(selectedKey, fails);
 
-             // 3. Matematika Backoff: 2s, 4s, 8s, 16s, 32s, mentok di 60s
              const backoffMs = Math.min(2000 * Math.pow(2, fails - 1), 60000);
              cooldownKeysRef.current.set(selectedKey, Date.now() + backoffMs); 
              
@@ -1066,7 +1034,6 @@ const App: React.FC = () => {
               const processingDataKey = (() => {
                 if (mode === 'idea') return settings.ideaMode === 'free' ? 'idea_free' : 'idea_paid';
                 if (mode === 'prompt') return settings.promptPlatform === 'file' ? 'prompt_file' : 'prompt_text';
-                if (mode === 'qc') return 'qc';
                 return 'metadata_universal';
               })();
 
@@ -1124,7 +1091,6 @@ const App: React.FC = () => {
         : activeTab === 'quran' ? 'Murottal Al-Quran'
         : activeTab === 'idea' ? 'Idea Generation' 
         : activeTab === 'prompt' ? 'Prompt Engineering'
-        : activeTab === 'qc' ? 'Quality Control'
         : 'Metadata Extraction';
   
   const getStatusBorderColor = () => {
@@ -1154,7 +1120,6 @@ const App: React.FC = () => {
   const canGenerate = (() => {
       if (isProcessing) return false;
 
-      // === LOGIKA CEK API KEY GANDA ===
       const isApiKeyEmpty = (settings.apiProvider === 'GEMINI API' && apiKeys.length === 0) || (settings.apiProvider === 'GROQ API' && groqKeys.length === 0);
       const isIdeaMode2 = activeMode === 'idea' && settings.ideaMode === 'paid';
       
@@ -1182,7 +1147,7 @@ const App: React.FC = () => {
               return !!settings.promptIdea && (settings.promptQuantity || 0) > 0;
           }
       }
-      if (activeMode === 'metadata' || activeMode === 'qc') {
+      if (activeMode === 'metadata') {
           if (currentFiles.length === 0) return false;
           if (activeMode === 'metadata') {
              if (!settings.titleMin || settings.titleMin <= 0) return false;
@@ -1203,7 +1168,6 @@ const App: React.FC = () => {
   const getGenerateButtonText = () => {
         if (activeMode === 'idea') return "Generate Ideas";
         if (activeMode === 'prompt') return "Generate Prompts";
-        if (activeMode === 'qc') return "Start QC Check";
         return "Generate Metadata";
   };
   
@@ -1228,7 +1192,6 @@ const App: React.FC = () => {
     <div className="flex flex-col h-screen w-full bg-gray-50 overflow-hidden relative">
       <audio ref={audioRef} onEnded={handleAudioEnded} preload="none" />
 
-      {/* POSISI WIDGET MENGUDARA DI LUAR MAIN CONTAINER AGAR TIDAK TERHAPUS OLEH TAB APA PUN */}
       {showMiniPlayer && currentSurahId && (
         <DraggablePlayer>
             <div className="p-3">
@@ -1273,7 +1236,6 @@ const App: React.FC = () => {
           <div className="flex flex-col bg-white border-b border-gray-200 shrink-0 overflow-hidden">
               <div ref={menuScrollRef} className="flex items-center gap-1.5 p-1.5 overflow-x-auto whitespace-nowrap scrollbar-none scroll-smooth">
                   
-                  {/* MUROTTAL (Sembunyi di kiri) */}
                   <button 
                       onClick={() => handleNavigation('quran' as any)} 
                       className={`h-9 w-9 shrink-0 rounded-lg flex items-center justify-center border transition-all ${
@@ -1336,18 +1298,6 @@ const App: React.FC = () => {
                   </button>
 
                   <button 
-                      onClick={() => handleNavigation('qc' as any)} 
-                      className={`px-4 h-9 rounded-lg text-xs font-bold border transition-all flex flex-row items-center justify-center gap-1.5 ${
-                          activeTab === 'qc' 
-                          ? 'bg-blue-50 text-blue-700 border-blue-300 shadow-sm' 
-                          : 'bg-white text-gray-600 border-gray-200 hover:bg-gray-50'
-                      }`}
-                  >
-                      <ShieldCheck className="w-4 h-4" />
-                      <span>QC</span>
-                  </button>
-
-                  <button 
                       onClick={() => handleNavigation('logs')} 
                       className={`h-9 w-9 shrink-0 rounded-lg flex items-center justify-center border transition-all ${
                           activeTab === 'logs' 
@@ -1360,7 +1310,6 @@ const App: React.FC = () => {
 
                   <div className="w-px h-6 bg-gray-200 shrink-0 mx-0.5"></div>
 
-                  {/* SUPPORT (Sembunyi di kanan) */}
                   <button 
                       onClick={() => window.open('https://lynk.id/isaproject/0581ez0729vx', '_blank')} 
                       className={`h-9 w-9 shrink-0 rounded-lg flex items-center justify-center border bg-white text-amber-600 border-gray-200 hover:bg-amber-50 hover:border-amber-200 transition-all`}
@@ -1409,15 +1358,6 @@ const App: React.FC = () => {
                       setSettings={setSettings} 
                       isProcessing={isCurrentTabProcessing && !isCurrentTabPaused} 
                       onFilesUpload={(fl) => processFiles(fl, 'metadata')}
-                      hasVideo={hasVideoFiles}
-                  />
-                  )}
-                  {activeTab === 'qc' && (
-                  <QcSettings 
-                      settings={settings} 
-                      setSettings={setSettings} 
-                      isProcessing={isCurrentTabProcessing && !isCurrentTabPaused} 
-                      onFilesUpload={(fl) => processFiles(fl, 'qc')}
                       hasVideo={hasVideoFiles}
                   />
                   )}
@@ -1547,8 +1487,6 @@ const App: React.FC = () => {
                         <><Lightbulb size={64} className="mb-4 text-blue-500 opacity-20" /><p className="text-base font-medium uppercase">Idea Workspace Ready.</p><p className="mt-1 max-w-xs text-center text-sm text-gray-500">{settings.ideaMode === 'free' ? (settings.ideaCategory === 'file' ? "Upload a file in Idea Settings to generate concepts." : "Select a category and quantity to generate new concepts."): (settings.ideaSourceLines && settings.ideaSourceLines.length > 0 ? "Database loaded. Specify Start Row & Quantity, then click 'Generate' to start extraction." : "Upload a Database file in Idea Settings (paid) to start.")}</p></>
                         ) : activeTab === 'prompt' ? (
                         <><Command size={64} className="mb-4 text-blue-500 opacity-20" /><p className="text-base font-medium uppercase">Prompt Generator Ready.</p><p className="mt-1 max-w-xs text-center text-sm text-gray-500">{settings.promptPlatform === 'file' ? "Upload file di panel pengaturan untuk membuat prompt dari analisa gambar/video." : "Enter an Idea, Description, and Quantity to start."}</p></>
-                        ) : activeTab === 'qc' ? ( 
-                        <><ShieldCheck size={64} className="mb-4 text-blue-500 opacity-20" /><p className="text-base font-medium uppercase">QC Workspace Ready.</p><p className="mt-1 text-sm">Upload files to start quality control.</p></>
                         ) : (
                         <><UploadCloud size={64} className="mb-4 opacity-20" /><p className="text-base font-medium uppercase">No files in {activeTab.toUpperCase()} workspace.</p><p className="mt-1 text-sm">Upload files to start.</p></>
                         )}
@@ -1561,6 +1499,7 @@ const App: React.FC = () => {
                           onToggleLanguage={handleToggleLanguage}
                           getLanguage={getLanguage}
                           isMode1={settings.ideaMode === 'free'}
+                          isPaused={isCurrentTabPaused}
                         />
                     ) : activeTab === 'prompt' ? (
                         <PromptListComponent 
@@ -1569,20 +1508,8 @@ const App: React.FC = () => {
                             onToggleLanguage={handleToggleLanguage} 
                             getLanguage={getLanguage} 
                             onPreview={setPreviewItem} 
+                            isPaused={isCurrentTabPaused}
                         />
-                    ) : activeTab === 'qc' ? ( 
-                        <div className="grid grid-cols-1 gap-4 pb-20 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 md:pb-0">
-                        {currentFiles.map(file => (
-                            <QcCard 
-                                key={file.id} item={file} onDelete={handleDelete}
-                                onRetry={(id) => {
-                                    const targetKey = getActiveDataKey();
-                                    setFilesMap(prev => ({ ...prev, [targetKey]: prev[targetKey].map(f => f.id === id ? { ...f, status: ProcessingStatus.Pending } : f) }));
-                                }}
-                                onPreview={setPreviewItem} language={getLanguage(file.id)} onToggleLanguage={handleToggleLanguage} disabled={isCurrentTabProcessing && !isCurrentTabPaused}
-                            />
-                        ))}
-                        </div>
                     ) : (
                         <div className="grid grid-cols-1 gap-4 pb-20 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 md:pb-0">
                         {currentFiles.map(file => (
@@ -1594,6 +1521,8 @@ const App: React.FC = () => {
                                     setFilesMap(prev => ({ ...prev, [targetKey]: prev[targetKey].map(f => f.id === id ? { ...f, status: ProcessingStatus.Pending } : f) }));
                                 }}
                                 onPreview={setPreviewItem} language={getLanguage(file.id)} onToggleLanguage={handleToggleLanguage} disabled={isCurrentTabProcessing && !isCurrentTabPaused} platform={settings.metadataPlatform}
+                                isPaused={isCurrentTabPaused}
+                                settings={settings}
                             />
                         ))}
                         </div>
