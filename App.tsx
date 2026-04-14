@@ -780,6 +780,7 @@ const App: React.FC = () => {
             runQueue(virtualFiles, currentMode);
             
         } else {
+            // 🚀 PERBAIKAN IDEA MODE 2 (MURNI LOKAL, INSTAN, TANPA ANTRIAN/API)
             const from = settings.ideaFromRow || 1;
             const batchSize = settings.ideaBatchSize || 0; 
             const sourceLines = settings.ideaSourceLines || [];
@@ -796,14 +797,21 @@ const App: React.FC = () => {
                 file: new File([""], `Idea_Row_${from + index}`, { type: 'text/plain' }), 
                 previewUrl: "", 
                 type: FileType.Image, 
-                status: ProcessingStatus.Pending, 
+                // ✨ LANGSUNG COMPLETED, tidak ada Pending/Processing
+                status: ProcessingStatus.Completed, 
                 metadata: meta,
                 sourceData: { id: from + index, originalTitle: cleanSlug, originalKeywords: line }
               };
             });
-            setFilesMap(prev => ({ ...prev, idea_paid: virtualFiles }));
             
-            runQueue(virtualFiles, currentMode); 
+            // Masukkan langsung ke state dan simpan ke history
+            setFilesMap(prev => ({ ...prev, idea_paid: virtualFiles }));
+            localStorage.setItem('ISA_LAST_IDEA_BATCH', JSON.stringify(virtualFiles));
+            setHasHistory(true);
+            addLog(`Instantly generated ${virtualFiles.length} ideas from database.`, 'success', 'idea');
+            
+            // JANGAN PANGGIL runQueue() SAMA SEKALI
+            return; 
         }
         return;
       }
