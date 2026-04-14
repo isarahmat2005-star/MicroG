@@ -1,33 +1,37 @@
 import React, { useState, useEffect, memo } from 'react';
 import { Edit2, Check, RefreshCw, Eye, Trash2, Loader2, Video as VideoIcon, Image as ImageIcon, PenTool, Languages } from 'lucide-react';
-import { FileItem, Language, ProcessingStatus, FileType } from '../types';
-// IMPORT KAMUS DREAMSTIME
+import { FileItem, Language, ProcessingStatus, FileType, AppSettings } from '../types';
 import { CATEGORIES, SHUTTERSTOCK_CATEGORIES, SHUTTERSTOCK_VIDEO_CATEGORIES, DREAMSTIME_CATEGORIES } from '../constants';
 import { getCategoryName } from '../utils/helpers';
 
 interface Props {
   item: FileItem;
   onDelete: (id: string) => void;
-  // TAMBAHAN: Masukkan 'categoryDream' agar bisa di-save
   onUpdate: (id: string, field: 'title' | 'description' | 'keywords' | 'category' | 'categoryShutter' | 'categoryDream', value: string, language: Language) => void; 
+  onSaveAllText?: (id: string, textData: { title: string, description: string, keywords: string }, language: Language) => void;
   onRetry: (id: string) => void;
   onPreview: (item: FileItem) => void;
   language: Language;
   onToggleLanguage: (id: string) => void; 
   disabled: boolean;
   platform?: string;
+  isPaused?: boolean; // TAMBAHAN: Untuk mematikan spinner
+  settings?: AppSettings; // TAMBAHAN: Untuk membaca instruksi pisau cukur visual
 }
 
 const FileCard: React.FC<Props> = ({ 
   item, 
   onDelete, 
   onUpdate, 
+  onSaveAllText,
   onRetry, 
   onPreview,
   language,
   onToggleLanguage,
   disabled,
-  platform = 'Adobe Stock'
+  platform = 'Adobe Stock',
+  isPaused = false,
+  settings
 }) => {
   const [isEditing, setIsEditing] = useState(false);
   
@@ -35,29 +39,66 @@ const FileCard: React.FC<Props> = ({
   const isDreamstime = platform === 'Dreamstime';
   const usesCategory = ['Adobe Stock', 'Shutterstock'].includes(platform);
   
-  // === DETEKTOR KELOMPOK PLATFORM ===
   const isGroup1 = ['Freepik', 'MiriCanvas'].includes(platform);
   const isGroup2 = ['Dreamstime', 'Vecteezy', 'Arabstock'].includes(platform);
-  const usesDescription = ['Shutterstock', ...['Dreamstime', 'Vecteezy', 'Arabstock']].includes(platform);
   
   const [editTitle, setEditTitle] = useState('');
   const [editDescription, setEditDescription] = useState('');
   const [editKeywords, setEditKeywords] = useState('');
   
-  // LACI UNTUK SHUTTER / ADOBE
   const [editCategory1, setEditCategory1] = useState('');
   const [editCategory2, setEditCategory2] = useState('');
   
-  // LACI KHUSUS DREAMSTIME (3 Kotak)
   const [editCategoryDream1, setEditCategoryDream1] = useState('');
   const [editCategoryDream2, setEditCategoryDream2] = useState('');
   const [editCategoryDream3, setEditCategoryDream3] = useState('');
   
   const currentTitle = language === 'ENG' ? item.metadata.en.title : item.metadata.ind.title;
   const currentDescription = language === 'ENG' ? (item.metadata.en.description || '') : (item.metadata.ind.description || '');
-  const currentKeywords = language === 'ENG' ? item.metadata.en.keywords : item.metadata.ind.keywords;
+  const rawKeywords = language === 'ENG' ? item.metadata.en.keywords : item.metadata.ind.keywords;
   
-  const keywordCount = currentKeywords ? currentKeywords.split(',').filter(k => k.trim().length > 0).length : 0;
+  // =========================================================================
+  // 🚀 LOGIKA GUNTING VISUAL (MULTI-LACI DINAMIS BERDASARKAN INSTRUKSI)
+  // =========================================================================
+  const getDynamicKeywords = (kws: string) => {
+    if (!kws || !settings) return kws;
+    
+    let targetLimit = settings.slideKeyword || 40; // Default slider UI
+    const instruction = (settings.metadataCustomInstruction || "").toLowerCase();
+
+    // 1. Cek apakah ada instruksi yang nyebut angka keyword
+    const match = instruction.match(/(\d+)\s*(?:keyword|kata kunci)/i);
+    if (match && match[1]) {
+        const requestedLimit = parseInt(match[1], 10);
+        
+        // 2. Cek apakah instruksi itu ditujukan KHUSUS untuk platform tertentu
+        const platforms = ['adobe', 'shutterstock', 'dreamstime', 'freepik', 'miricanvas', 'vecteezy', 'arabstock'];
+        const mentionedPlatforms = platforms.filter(p => instruction.includes(p));
+
+        if (mentionedPlatforms.length > 0) {
+            // Jika user menyebut nama platform (Misal: "Khusus adobe 70 keyword")
+            const currentPlatformLower = platform.toLowerCase();
+            // Apakah dropdown kita saat ini sama dengan yang disebut user?
+            if (mentionedPlatforms.some(p => currentPlatformLower.includes(p))) {
+                targetLimit = requestedLimit; // COCOK! Terapkan limit khusus (misal 70)
+            }
+        } else {
+            // Jika user cuma bilang "70 keyword" tanpa nyebut merk platform (Berlaku semua)
+            targetLimit = requestedLimit;
+        }
+    }
+
+    // Eksekusi Pemotongan Visual
+    let arr = kws.split(',').map(k => k.trim()).filter(k => k.length > 0);
+    if (arr.length > targetLimit) {
+        arr = arr.slice(0, targetLimit);
+    }
+    return arr.join(', ');
+  };
+
+  const dynamicKeywords = getDynamicKeywords(rawKeywords);
+  const keywordCount = dynamicKeywords ? dynamicKeywords.split(',').filter(k => k.trim().length > 0).length : 0;
+  // =========================================================================
 
   const currentCategory = isShutterstock ? (item.metadata.categoryShutter || '') : (item.metadata.category || '');
   const currentCategoryDream = item.metadata.categoryDream || '';
@@ -66,7 +107,6 @@ const FileCard: React.FC<Props> = ({
   const cat1Name = displayCats[0] ? getCategoryName(displayCats[0], language, platform) : "";
   const cat2Name = displayCats[1] ? getCategoryName(displayCats[1], language, platform) : "";
 
-  // Pecah angka Dreamstime (Misal: "112, 145, 105")
   const dreamCats = currentCategoryDream ? currentCategoryDream.split(',').map(c => c.trim()) : [];
 
   const activeCategories = isShutterstock 
@@ -76,7 +116,8 @@ const FileCard: React.FC<Props> = ({
   useEffect(() => {
     setEditTitle(currentTitle);
     setEditDescription(currentDescription);
-    setEditKeywords(currentKeywords);
+    // Saat ngedit, yang ditampilkan adalah Master Keyword utuh, bukan yang udah dipotong dinamis
+    setEditKeywords(rawKeywords); 
     
     if (isShutterstock) {
         setEditCategory1(displayCats[0] || '');
@@ -87,7 +128,6 @@ const FileCard: React.FC<Props> = ({
     }
 
     if (isDreamstime) {
-        // SETTING DARI USER: Kosongkan jika tidak ada
         setEditCategoryDream1(dreamCats[0] || '');
         setEditCategoryDream2(dreamCats[1] || '');
         setEditCategoryDream3(dreamCats[2] || '');
@@ -96,12 +136,18 @@ const FileCard: React.FC<Props> = ({
 
   const toggleEdit = () => {
     if (isEditing) {
-      // 1. Selalu tembak Update untuk Teks agar memancing Satpam AI bekerja
-      onUpdate(item.id, 'title', editTitle, language);
-      onUpdate(item.id, 'description', editDescription, language);
-      onUpdate(item.id, 'keywords', editKeywords, language);
+      if (onSaveAllText) {
+          onSaveAllText(item.id, {
+             title: editTitle,
+             description: editDescription,
+             keywords: editKeywords
+          }, language);
+      } else {
+          onUpdate(item.id, 'title', editTitle, language);
+          onUpdate(item.id, 'description', editDescription, language);
+          onUpdate(item.id, 'keywords', editKeywords, language);
+      }
       
-      // 2. Simpan Kategori Adobe/Shutter (Jika platform cocok)
       if (usesCategory) {
           const newCategory = isShutterstock 
               ? [editCategory1, editCategory2].filter(Boolean).join(', ') 
@@ -111,7 +157,6 @@ const FileCard: React.FC<Props> = ({
           }
       }
 
-      // 3. Simpan Kategori Dreamstime (Jika platform cocok)
       if (isDreamstime) {
           const newDreamCategory = [editCategoryDream1, editCategoryDream2, editCategoryDream3]
                                       .filter(Boolean).join(', ');
@@ -130,6 +175,9 @@ const FileCard: React.FC<Props> = ({
   const isProcessing = item.status === ProcessingStatus.Processing;
   const isFailed = item.status === ProcessingStatus.Failed;
 
+  // 🚀 LOGIKA ANIMASI PAUSE SINKRON
+  const showSpinner = isProcessing && !isPaused;
+
   const labelClass = "text-[10px] font-bold px-1.5 rounded border uppercase inline-flex items-center select-none tracking-wide h-6 w-[70px] justify-center shrink-0";
   const labelClassFull = "text-[10px] font-bold px-1.5 rounded border uppercase inline-flex items-center select-none tracking-wide h-6 w-full justify-center shrink-0";
   const textBaseClass = "w-full text-xs px-2 py-1.5 rounded border transition-colors leading-relaxed block";
@@ -140,7 +188,7 @@ const FileCard: React.FC<Props> = ({
   const FileTypeIcon = item.type === FileType.Video ? VideoIcon : item.type === FileType.Vector ? PenTool : ImageIcon;
 
   return (
-    <div className="bg-white rounded-lg shadow-sm border border-blue-200 flex flex-col overflow-hidden relative group hover:shadow-md transition-shadow">
+    <div className={`bg-white rounded-lg shadow-sm border flex flex-col overflow-hidden relative group hover:shadow-md transition-all ${isProcessing ? (isPaused ? 'border-amber-400 ring-1 ring-amber-200' : 'border-blue-400 ring-1 ring-blue-200') : 'border-blue-200'}`}>
       
       {/* 1. TOP TOOLBAR */}
       <div className="grid grid-cols-4 gap-2 p-2 bg-blue-50/50 border-b border-blue-100">
@@ -166,10 +214,12 @@ const FileCard: React.FC<Props> = ({
       </div>
 
       {/* 2. Filename Row */}
-      <div className="px-3 h-8 flex items-center gap-2 border-b border-blue-100 mb-1">
+      <div className={`px-3 h-8 flex items-center gap-2 border-b border-blue-100 mb-1 transition-colors ${isProcessing ? (isPaused ? 'bg-amber-50/50' : 'bg-blue-50/50') : ''}`}>
          <div className="shrink-0 w-5 flex justify-center items-center">
-            {isProcessing ? (
+            {showSpinner ? (
               <Loader2 className="animate-spin text-blue-500" size={16} />
+            ) : isProcessing && isPaused ? (
+              <div className="w-2 h-2 rounded-full bg-amber-500" title="Paused"></div>
             ) : isFailed ? (
               <button onClick={() => onRetry(item.id)} title="Retry" className="text-red-500 hover:text-red-700">
                 <RefreshCw size={16} />
@@ -178,19 +228,19 @@ const FileCard: React.FC<Props> = ({
               <FileTypeIcon size={16} className="text-gray-400" />
             )}
          </div>
-         <div className="flex-1 min-w-0">
-           <h3 className={`text-sm font-medium truncate ${isFailed ? 'text-red-600' : 'text-gray-700'}`} title={item.file.name}>
+         <div className="flex-1 min-w-0 flex items-center justify-between">
+           <h3 className={`text-sm font-medium truncate ${isFailed ? 'text-red-600' : isProcessing ? (isPaused ? 'text-amber-600' : 'text-blue-600') : 'text-gray-700'}`} title={item.file.name}>
              {item.file.name}
            </h3>
+           {showSpinner && <span className="text-[9px] font-bold uppercase text-blue-500 tracking-wider animate-pulse ml-2">PROCESSING...</span>}
          </div>
       </div>
 
       {/* 3. Metadata Content */}
-      <div className="flex flex-col gap-1 px-3 pb-3 flex-1">
+      <div className={`flex flex-col gap-1 px-3 pb-3 flex-1 transition-opacity ${isProcessing && !isPaused ? 'opacity-50 pointer-events-none' : 'opacity-100'}`}>
          
          {/* ==== APARTEMEN LANTAI 1, 2, (& 3 KHUSUS DREAMSTIME) ==== */}
          {isGroup2 ? (
-            // JIKA GRUP 2: Tinggi melar dikit kalau Dreamstime
             <div className={`flex flex-col gap-1 w-full ${isDreamstime ? 'h-[6rem]' : 'h-[4.25rem]'} shrink-0`}>
                
                {/* LANTAI 1 (TITLE) */}
@@ -228,12 +278,10 @@ const FileCard: React.FC<Props> = ({
                {/* LANTAI 3 (KATEGORI KHUSUS DREAMSTIME DIBELAH 3) */}
                {isDreamstime && (
                  <div className="flex gap-2 items-center h-[1.5rem]">
-                   {/* LABEL DIGANTI JADI CATEGORY SESUAI REQUEST PENGGUNA */}
                    <span className={`${labelClass} bg-green-50 text-green-600 border-green-200`}>CATEGORY</span>
                    <div className="h-full w-full relative flex gap-1">
                      {isEditing ? (
                         <>
-                           {/* Waktu di-edit: Muncul Teks Lengkap dengan opsi siluman */}
                            <select value={editCategoryDream1} onChange={(e) => setEditCategoryDream1(e.target.value)} className={`flex-1 ${textBaseClass} ${editClass} h-full py-0 pl-1 text-[10px]`}>
                               <option value="" disabled hidden style={{ display: 'none' }}></option>
                               {DREAMSTIME_CATEGORIES.map(cat => (
@@ -255,7 +303,6 @@ const FileCard: React.FC<Props> = ({
                         </>
                      ) : (
                         <>
-                           {/* Waktu dilihat (View): Cuma Muncul Angkanya Aja, KOSONG jika string kosong */}
                            <div className={`flex-1 ${viewContainerClass} h-full !p-0 px-1 overflow-hidden`}>
                               <div className={`${textBaseClass} ${viewClass} h-full flex items-center justify-center font-bold !py-0 !border-0 !p-0 truncate text-[10px] text-gray-600`}>
                                  {dreamCats[0] || '\u00A0'}
@@ -278,7 +325,6 @@ const FileCard: React.FC<Props> = ({
                )}
             </div>
          ) : (
-            // BUKAN GRUP 2: Tampilkan kotak biasa (Melar untuk Grup 1, Normal untuk yang lain)
             <div className="flex gap-2 items-start">
               <span className={`${labelClass} ${isShutterstock ? 'bg-amber-50 text-amber-600 border-amber-200' : 'bg-blue-50 text-blue-600 border-blue-200'}`}>
                  {isShutterstock ? 'DESC' : 'TITLE'}
@@ -302,34 +348,29 @@ const FileCard: React.FC<Props> = ({
             </div>
          )}
          
-         {/* KOTAK KATEGORI (ADOBE & SHUTTERSTOCK): Sembunyikan jika Grup 1 atau Grup 2 */}
          {!isGroup1 && !isGroup2 && (
              <div className="flex gap-2 items-center">
                <span className={`${labelClass} ${usesCategory ? 'bg-green-50 text-green-600 border-green-200' : 'bg-gray-50 text-gray-400 border-gray-200'}`}>CATEGORY</span>
                <div className={`h-6 w-full relative ${isShutterstock && usesCategory ? 'flex gap-1' : ''}`}>
-                  {!usesCategory ? (
-                      <div className={`${viewContainerClass} h-full w-full !p-0 px-1 bg-gray-50/50 border-gray-200 opacity-60`}>
+                 {!usesCategory ? (
+                     <div className={`${viewContainerClass} h-full w-full !p-0 px-1 bg-gray-50/50 border-gray-200 opacity-60`}>
                          <div className={`${textBaseClass} ${viewClass} h-full flex items-center justify-center text-gray-400 !py-0 !border-0 !p-0 text-[10px] uppercase tracking-widest font-bold`}>
-                            AUTO / NOT REQUIRED
+                           AUTO / NOT REQUIRED
                          </div>
-                      </div>
-                  ) : isEditing ? (
+                     </div>
+                 ) : isEditing ? (
                      isShutterstock ? (
                         <>
                            <select value={editCategory1} onChange={(e) => setEditCategory1(e.target.value)} className={`flex-1 ${textBaseClass} ${editClass} h-full py-0 pl-1 text-[10px]`}>
                              <option value="" disabled hidden style={{ display: 'none' }}></option>
                              {activeCategories.map(cat => (
-                               <option key={cat.id} value={cat.id}>
-                                 {language === 'ENG' ? cat.en : cat.id_lang}
-                               </option>
+                               <option key={cat.id} value={cat.id}>{language === 'ENG' ? cat.en : cat.id_lang}</option>
                              ))}
                            </select>
                            <select value={editCategory2} onChange={(e) => setEditCategory2(e.target.value)} className={`flex-1 ${textBaseClass} ${editClass} h-full py-0 pl-1 text-[10px]`}>
                              <option value="" disabled hidden style={{ display: 'none' }}></option>
                              {activeCategories.map(cat => (
-                               <option key={cat.id} value={cat.id}>
-                                 {language === 'ENG' ? cat.en : cat.id_lang}
-                               </option>
+                               <option key={cat.id} value={cat.id}>{language === 'ENG' ? cat.en : cat.id_lang}</option>
                              ))}
                            </select>
                         </>
@@ -337,13 +378,11 @@ const FileCard: React.FC<Props> = ({
                         <select value={editCategory1} onChange={(e) => setEditCategory1(e.target.value)} className={`${textBaseClass} ${editClass} h-full py-0 pl-1 text-[10px]`}>
                            <option value="" disabled hidden style={{ display: 'none' }}></option>
                            {activeCategories.map(cat => (
-                             <option key={cat.id} value={cat.id}>
-                               {language === 'ENG' ? cat.en : cat.id_lang}
-                             </option>
+                             <option key={cat.id} value={cat.id}>{language === 'ENG' ? cat.en : cat.id_lang}</option>
                            ))}
                         </select>
                      )
-                  ) : (
+                 ) : (
                      isShutterstock ? (
                         <>
                            <div className={`flex-1 ${viewContainerClass} h-full !p-0 px-1 overflow-hidden`}>
@@ -364,12 +403,12 @@ const FileCard: React.FC<Props> = ({
                            </div>
                         </div>
                      )
-                  )}
+                 )}
                </div>
              </div>
          )}
 
-         {/* LANTAI TERAKHIR: KEYWORDS (Dipangkas otomatis kalau mode Dreamstime biar tingginya rata) */}
+         {/* 🚀 LANTAI TERAKHIR: KEYWORDS (Menampilkan Data yang Sudah Digunting) */}
          <div className="flex flex-col gap-1 flex-1">
             <span className={`${labelClassFull} bg-violet-50 text-violet-600 border-violet-200`}>
                 KEYWORDS = {keywordCount}
@@ -380,7 +419,8 @@ const FileCard: React.FC<Props> = ({
                 ) : (
                   <div className={`${viewContainerClass} h-full`}>
                       <div className={`${textBaseClass} ${viewClass} h-full text-gray-500 whitespace-normal break-words !border-0 !p-0`}>
-                        {currentKeywords || '\u00A0'}
+                        {/* Menampilkan dynamicKeywords hasil guntingan, BUKAN rawKeywords */}
+                        {dynamicKeywords || '\u00A0'}
                       </div>
                   </div>
                 )}
