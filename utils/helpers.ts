@@ -305,7 +305,7 @@ export const downloadTXT = (files: FileItem[], customFilename?: string): string 
   return fileName;
 };
 
-/// Helper to extract a dynamic number of frames from a video file with EXTREME DOWNSCALING
+// Helper to extract a dynamic number of frames from a video file with EXTREME DOWNSCALING
 export const extractVideoFrames = async (videoFile: File, frameCount: number = 3): Promise<string[]> => {
   return new Promise((resolve, reject) => {
     const video = document.createElement('video');
@@ -313,15 +313,24 @@ export const extractVideoFrames = async (videoFile: File, frameCount: number = 3
     const ctx = canvas.getContext('2d');
     const frames: string[] = [];
     
+    // ====================================================================
+    // 🚀 LOGIKA PINTAR PENGAMBILAN FRAME (ANTI-LAYAR HITAM/FADE-IN)
+    // ====================================================================
     const timestamps: number[] = [];
     if (frameCount <= 1) {
+        // 1 Frame: Ambil persis di tengah video (50%)
         timestamps.push(0.5);
     } else {
-        const step = 0.8 / (frameCount - 1);
+        // Mode > 1 Frame: Hindari 15% awal dan 15% akhir video
+        const startOffset = 0.15; // Mulai dari 15% (Awal Aman)
+        const endOffset = 0.85;   // Berakhir di 85% (Akhir Aman)
+        const step = (endOffset - startOffset) / (frameCount - 1);
+        
         for (let i = 0; i < frameCount; i++) {
-            timestamps.push(0.1 + (i * step));
+            timestamps.push(startOffset + (i * step));
         }
     }
+    // ====================================================================
 
     let currentStep = 0;
 
