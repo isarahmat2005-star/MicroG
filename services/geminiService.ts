@@ -351,8 +351,6 @@ INSTRUKSI DARI PENGGUNA:
             expectedJsonSchema = `\n\nEXPECTED JSON FORMAT:\n{\n  "en_idea": "string",\n  "ind_idea": "string"\n}`;
         } else if (mode === 'prompt') {
             expectedJsonSchema = `\n\nEXPECTED JSON FORMAT:\n{\n  "en_prompt": "string",\n  "ind_prompt": "string"\n}`;
-        } else if (mode === 'qc') {
-            expectedJsonSchema = `\n\nEXPECTED JSON FORMAT:\n{\n  "score": number,\n  "status": "string",\n  "technicalIssues": ["string"],\n  "ipIssues": ["string"],\n  "commercialAdvice": "string"\n}`;
         }
         
         const groqSystemInstruction = systemInstruction + expectedJsonSchema + `\n\nIMPORTANT: You MUST return ONLY a valid JSON object matching the exact keys and structure above. Do NOT wrap it in markdown code blocks.`;
@@ -464,17 +462,6 @@ INSTRUKSI DARI PENGGUNA:
                 en: { title: parsed.en_prompt, keywords: "" },
                 ind: { title: parsed.ind_prompt, keywords: "" },
                 category: 'Prompt'
-            }
-        };
-    } else if (mode === 'qc') {
-        return {
-            metadata: { en: { title: "", keywords: "" }, ind: { title: "", keywords: "" }, category: "" }, 
-            qcResult: {
-                score: parsed.score,
-                status: parsed.status,
-                technicalIssues: parsed.technicalIssues || [],
-                ipIssues: parsed.ipIssues || [],
-                commercialAdvice: parsed.commercialAdvice
             }
         };
     }
