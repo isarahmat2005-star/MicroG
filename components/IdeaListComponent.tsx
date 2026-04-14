@@ -1,7 +1,6 @@
-
 import React, { memo, useState, useRef, useEffect } from 'react';
-import { Copy, CheckCircle, AlertTriangle, Menu, Trash2, Languages, Check, X, ExternalLink } from 'lucide-react';
-import { FileItem, Language } from '../types';
+import { Copy, CheckCircle, AlertTriangle, Menu, Trash2, Languages, Check, X, ExternalLink, Loader2 } from 'lucide-react';
+import { FileItem, Language, ProcessingStatus } from '../types';
 
 interface Props {
   items: FileItem[];
@@ -10,6 +9,8 @@ interface Props {
   onToggleLanguage: (id: string) => void;
   getLanguage: (id: string) => Language;
   isMode1: boolean;
+  // 🚀 TAMBAHAN: Kabel untuk menerima status Pause
+  isPaused?: boolean;
 }
 
 const IdeaListComponent: React.FC<Props> = ({ 
@@ -18,7 +19,8 @@ const IdeaListComponent: React.FC<Props> = ({
   onDelete, 
   onToggleLanguage, 
   getLanguage,
-  isMode1
+  isMode1,
+  isPaused = false // Default false jika tidak dikirim
 }) => {
   const [copiedId, setCopiedId] = useState<string | null>(null);
   const [activeMenuId, setActiveMenuId] = useState<string | null>(null);
@@ -112,11 +114,29 @@ const IdeaListComponent: React.FC<Props> = ({
                 const isMenuOpen = activeMenuId === item.id;
                 const originalUrl = item.sourceData?.originalKeywords;
 
+                // 🚀 LOGIKA STATUS DAN SPINNER (SINKRON DENGAN PAUSE)
+                const isProcessing = item.status === ProcessingStatus.Processing;
+                const showSpinner = isProcessing && !isPaused;
+
                 return (
-                   <div key={item.id} className={`flex items-center gap-3 px-3 transition-colors group relative h-16 shrink-0 ${vulgarWord ? 'bg-red-50 hover:bg-red-100/60' : 'hover:bg-white'}`}>
-                      {/* Row Number */}
-                      <div className={`shrink-0 w-8 h-8 flex items-center justify-center rounded text-xs font-bold ${vulgarWord ? 'bg-red-200 text-red-700' : 'bg-gray-100 text-gray-500'}`}>
-                         {rowId}
+                   <div key={item.id} className={`flex items-center gap-3 px-3 transition-colors group relative h-16 shrink-0 ${
+                      vulgarWord ? 'bg-red-50 hover:bg-red-100/60' : 
+                      isProcessing ? (isPaused ? 'bg-amber-50/50' : 'bg-blue-50/50') : 
+                      'hover:bg-white'
+                   }`}>
+                      {/* Row Number / Spinner Indicator */}
+                      <div className={`shrink-0 w-8 h-8 flex items-center justify-center rounded text-xs font-bold ${
+                          showSpinner ? 'bg-blue-100 text-blue-600' :
+                          isProcessing && isPaused ? 'bg-amber-100 text-amber-600' :
+                          vulgarWord ? 'bg-red-200 text-red-700' : 'bg-gray-100 text-gray-500'
+                      }`}>
+                          {showSpinner ? (
+                              <Loader2 className="animate-spin w-4 h-4" />
+                          ) : isProcessing && isPaused ? (
+                              <div className="w-2.5 h-2.5 rounded-full bg-amber-500" title="Paused"></div>
+                          ) : (
+                              rowId
+                          )}
                       </div>
 
                       {/* Content */}
@@ -129,7 +149,11 @@ const IdeaListComponent: React.FC<Props> = ({
                                </span>
                             </div>
                          ) : (
-                            <p className="text-sm text-gray-800 font-medium truncate select-all" title={title}>{title}</p>
+                            <div className="flex flex-col">
+                                <p className={`text-sm font-medium truncate select-all ${isProcessing ? (isPaused ? 'text-amber-700' : 'text-blue-700') : 'text-gray-800'}`} title={title}>
+                                  {title || (isProcessing ? 'Processing...' : '\u00A0')}
+                                </p>
+                            </div>
                          )}
                       </div>
 
