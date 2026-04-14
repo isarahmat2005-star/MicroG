@@ -103,16 +103,48 @@ export const downloadCSV = (files: FileItem[], customFilename?: string, platform
      // 1. Setup Pemisah Kolom (Freepik butuh titik koma)
      if (platform === 'Freepik') separator = ';';
 
-     // 2. Setup Auto-Slice Keyword Limit
-     const userKeywordLimit = settings?.slideKeyword || 40;
-     const maxPlatformLimit = platform === 'Dreamstime' ? 80 : 50;
-     const finalKeywordLimit = Math.min(userKeywordLimit, maxPlatformLimit);
+     // =====================================================================
+     // 🚀 2. SETUP AUTO-SLICE KEYWORD (GUNTING DINAMIS SABDA RAJA)
+     // =====================================================================
+     let targetKeywordLimit = settings?.slideKeyword || 40;
+     let isGodModeActive = false;
+
+     if (settings?.metadataCustomInstruction) {
+         const instruction = settings.metadataCustomInstruction.toLowerCase();
+         // Cari angka di dekat kata 'keyword' atau 'kata kunci'
+         const match = instruction.match(/(\d+)\s*(?:keyword|kata kunci)/i);
+         
+         if (match && match[1]) {
+             const requestedLimit = parseInt(match[1], 10);
+             const platforms = ['adobe', 'shutterstock', 'dreamstime', 'freepik', 'miricanvas', 'vecteezy', 'arabstock'];
+             const mentionedPlatforms = platforms.filter(p => instruction.includes(p));
+
+             if (mentionedPlatforms.length > 0) {
+                 // Jika user nyebut spesifik nama platform di kolom instruksi
+                 const currentPlatformLower = platform.toLowerCase();
+                 if (mentionedPlatforms.some(p => currentPlatformLower.includes(p))) {
+                     targetKeywordLimit = requestedLimit; // Terapkan angka khusus (misal 70)
+                     isGodModeActive = true;
+                 }
+             } else {
+                 // Berlaku universal jika tidak nyebut platform
+                 targetKeywordLimit = requestedLimit;
+                 isGodModeActive = true;
+             }
+         }
+     }
+
+     // Jika God Mode TIDAK aktif untuk platform ini, kembali ke limit bawaan UI atau batas max platform
+     if (!isGodModeActive) {
+         const maxPlatformLimit = platform === 'Dreamstime' ? 80 : 50;
+         targetKeywordLimit = Math.min(targetKeywordLimit, maxPlatformLimit);
+     }
+     // =====================================================================
 
      // 3. Setup Header CSV Berdasarkan Platform
      if (platform === 'Shutterstock') {
          header = ['Filename', 'Description', 'Keywords', 'Categories', 'Editorial', 'Mature content', 'illustration'];
      } else if (platform === 'Dreamstime') {
-         // Cek apakah pakai template Video atau Image
          if (hasVideoInBatch) {
              header = ['Filename', 'Video Name', 'Description', 'Category 1', 'Category 2', 'Category 3', 'keywords', 'W-EL', 'SR-EL', 'SR-Price', 'Editorial', 'MR doc Ids', 'Pr Docs'];
          } else {
@@ -142,22 +174,20 @@ export const downloadCSV = (files: FileItem[], customFilename?: string, platform
         // PERBAIKAN FORMAT KHUSUS DREAMSTIME (JANGAN GANGGU VIDEO!)
         if (platform === 'Dreamstime') {
             if (!isCurrentFileVideo && !finalFilename.toLowerCase().endsWith('.eps')) {
-                // Pastikan akhiran foto adalah .jpg bukan .jpeg, dan jangan paksa jadi kapital .JPG
                 finalFilename = finalFilename.replace(/\.jpeg$/i, '.jpg');
             }
         }
         
         // AMBIL TITLE & DESCRIPTION DARI HASIL AI
-        // (Jika AI gagal generate description, fallback ke title untuk jaga-jaga)
         const titleClean = f.metadata.en.title.replace(/"/g, '""');
         const descClean = (f.metadata.en.description || f.metadata.en.title).replace(/"/g, '""');
         
         const title = `"${titleClean}"`;
         const description = `"${descClean}"`;
         
-        // AUTO-SLICE KEYWORD
+        // 🚀 AUTO-SLICE KEYWORD DENGAN TARGET DINAMIS (HASIL GUNTINGAN)
         const rawKeywords = f.metadata.en.keywords.split(',').map(k => k.trim().toLowerCase()).filter(k => k !== "");
-        const uniqueKeywords = Array.from(new Set(rawKeywords)).slice(0, finalKeywordLimit).join(', ');
+        const uniqueKeywords = Array.from(new Set(rawKeywords)).slice(0, targetKeywordLimit).join(', ');
         const keywords = `"${uniqueKeywords.replace(/"/g, '""')}"`;
         
         const targetCat = platform === 'Shutterstock' ? f.metadata.categoryShutter : f.metadata.category;
@@ -166,41 +196,30 @@ export const downloadCSV = (files: FileItem[], customFilename?: string, platform
 
         // 4. SUSUN BARIS SESUAI KEBUTUHAN SPESIFIK PLATFORM
         if (platform === 'Shutterstock') {
-            // Shutterstock hanya butuh Description
             return [finalFilename, description, keywords, categoryName, 'no', 'no', isIllustration].join(separator);
         } else if (platform === 'Dreamstime') {
-            // --- LOGIKA PECAH KATEGORI DREAMSTIME ---
-            // Ambil string dari laci memori (Misal: "112, 145, 105" atau kosong)
             const rawCatDream = f.metadata.categoryDream || "";
-            // Belah berdasarkan koma, lalu bersihkan spasi
             const catArr = rawCatDream.split(',').map(c => c.trim());
             
-            // Siapkan 3 laci khusus untuk di-ekspor (Kalau kosong atau kurang dari 3, diisi default 0.0)
-            const cat1 = catArr[0] || "112"; // Kasih fallback default biar gak error
+            // Siapkan 3 laci khusus. Jika user minta kosongi, catArr akan undefined dan jadi "0.0"
+            const cat1 = catArr[0] || "112"; 
             const cat2 = catArr[1] || "0.0";
             const cat3 = catArr[2] || "0.0";
 
             if (hasVideoInBatch) {
-               // Template Video (13 Kolom): Kolom 4, 5, 6 adalah Kategori
                return [finalFilename, title, description, cat1, cat2, cat3, keywords, '', '', '', '', '', ''].join(separator);
             } else {
-               // Template Image (15 Kolom): Kolom 4, 5, 6 adalah Kategori
                return [finalFilename, title, description, cat1, cat2, cat3, keywords, '', '', '', '', '', '', '', ''].join(separator);
             }
         } else if (platform === 'Freepik') {
-            // Freepik hanya butuh Title
             return [finalFilename, title, keywords, '""', '""'].join(separator);
         } else if (platform === 'MiriCanvas') {
-            // MiriCanvas hanya butuh Title
             return [finalFilename, title, keywords, '""', 'Premium', 'Y'].join(separator);
         } else if (platform === 'Vecteezy') {
-            // Vecteezy butuh Title & Description
             return [finalFilename, title, description, keywords, 'Free'].join(separator);
         } else if (platform === 'Arabstock') {
-            // Arabstock butuh Title & Description
             return [finalFilename, title, description, keywords].join(separator);
         } else {
-            // Default: Adobe Stock hanya butuh Title
             return [finalFilename, title, keywords, categoryName].join(separator); 
         }
      });
@@ -263,7 +282,6 @@ export const downloadTXT = (files: FileItem[], customFilename?: string): string 
      }
   } else {
      content = files.map(f => {
-        // Tampilkan juga Description di hasil TXT jika ada
         const descText = f.metadata.en.description ? `\nDescription: ${f.metadata.en.description}` : '';
         return `Filename: ${f.file.name}\nTitle/Prompt: ${f.metadata.en.title}${descText}\nKeywords/Params: ${f.metadata.en.keywords}\nCategory: ${getCategoryName(f.metadata.category, 'ENG')}\n----------------------------------------\n`;
       }).join('\n');
